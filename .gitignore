@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.env
+*.sql
+.DS_Store
+scratch/
+Data_Reg_DIY/
+*.pdf
+laravel/

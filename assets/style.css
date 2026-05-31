@@ -1,0 +1,182 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap');
+
+/* --- Reset & Typography --- */
+html, body, [class*="css"] {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    color: #1e293b;
+    background-color: #f8fafc;
+}
+
+/* Hide Streamlit default header/footer for standalone feel */
+header[data-testid="stHeader"] {
+    background: transparent !important;
+}
+footer {visibility: hidden;}
+.stDeployButton {display:none;}
+
+/* hide default streamlit navigation */
+div[data-testid="stSidebarNav"] {
+    display: none !important;
+}
+
+/* --- Headings --- */
+h1, h2, h3 {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    color: #0f172a;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+h1 {
+    font-size: 2.2rem !important;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e2e8f0;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(90deg, #1e3a8a 0%, #3b82f6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+h2 {
+    font-size: 1.4rem !important;
+    color: #1e3a8a !important;
+}
+
+h3 {
+    font-size: 1.15rem !important;
+    color: #334155 !important;
+}
+
+/* --- Sidebar (Kesan Formal) --- */
+[data-testid="stSidebar"] {
+    background: #0f172a !important;
+    background-image: linear-gradient(180deg, #0f172a 0%, #1e3a8a 100%) !important;
+    border-right: none !important;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+}
+
+/* Sidebar texts & links */
+[data-testid="stSidebar"] * {
+    color: rgba(255, 255, 255, 0.95) !important;
+}
+
+[data-testid="stSidebar"] [data-testid="stPageLink-NavLink"] {
+    border-radius: 8px;
+    margin-bottom: 4px;
+    padding: 10px 15px;
+    transition: all 0.2s;
+}
+
+[data-testid="stSidebar"] [data-testid="stPageLink-NavLink"]:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+    transform: translateX(4px);
+}
+
+[data-testid="stSidebar"] hr {
+    border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* --- Metric Cards (Glass/Premium feel) --- */
+div[data-testid="metric-container"] {
+    background: #ffffff;
+    border-left: 5px solid #3b82f6; 
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -1px rgba(15, 23, 42, 0.03);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Subtle glow/gradient on hover */
+div[data-testid="metric-container"]:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04);
+    border-left: 5px solid #d97706; 
+}
+
+div[data-testid="metric-container"] label {
+    font-size: 0.85rem !important;
+    color: #64748b !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700 !important;
+    margin-bottom: 0.5rem;
+}
+
+div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
+    font-size: 2rem !important;
+    color: #0f172a !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.02em;
+}
+
+/* --- DataFrames / Tables (Premium & Clean) --- */
+[data-testid="stDataFrame"] {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 8px;
+    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.05);
+    border: 1px solid #e2e8f0;
+}
+
+/* --- Form / Input Elements --- */
+.stSelectbox label, .stTextInput label {
+    font-weight: 600 !important;
+    color: #475569 !important;
+    font-size: 0.9rem !important;
+}
+
+.stSelectbox div[data-baseweb="select"] > div, .stTextInput input {
+    border-radius: 8px !important;
+    border-color: #cbd5e1 !important;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+
+.stSelectbox div[data-baseweb="select"] > div:hover, .stTextInput input:hover {
+    border-color: #94a3b8 !important;
+}
+
+/* --- Badges --- */
+.badge {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: inline-block;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.badge-wajar { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+.badge-cukup { background: #fefce8; color: #a16207; border: 1px solid #fef08a; }
+.badge-tidak { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+.badge-neutral { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+
+/* --- Dividers --- */
+hr {
+    border-color: #e2e8f0 !important;
+    margin-top: 2rem !important;
+    margin-bottom: 2rem !important;
+}
+
+/* --- Plotly Charts Container --- */
+.js-plotly-plot {
+    background: white;
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.05);
+    border: 1px solid #e2e8f0;
+}
+
+/* General containers */
+[data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"] {
+    background-color: #ffffff;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    border: 1px solid #e2e8f0;
+    margin-bottom: 1rem;
+}

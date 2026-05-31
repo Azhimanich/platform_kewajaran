@@ -1,0 +1,65 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "NAME_2": "Kota Yogyakarta",
+        "TYPE_2": "Kota",
+        "namapemda_match": "KOTA YOGYAKARTA"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[110.3387,  -7.8508],[110.3612, -7.8508],[110.4152, -7.7522],[110.4143, -7.7318],[110.3803, -7.7277],[110.3387, -7.7870],[110.3387, -7.8508]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "NAME_2": "Kab. Bantul",
+        "TYPE_2": "Kabupaten",
+        "namapemda_match": "KAB. BANTUL"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[110.2461, -7.8247],[110.2461, -8.0964],[110.5524, -8.0964],[110.5524, -7.8247],[110.2461, -7.8247]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "NAME_2": "Kab. Sleman",
+        "TYPE_2": "Kabupaten",
+        "namapemda_match": "KAB. SLEMAN"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[110.2124, -7.5297],[110.2124, -7.7814],[110.5879, -7.7814],[110.5879, -7.5297],[110.2124, -7.5297]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "NAME_2": "Kab. Kulon Progo",
+        "TYPE_2": "Kabupaten",
+        "namapemda_match": "KAB. KULON PROGO"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[110.0161, -7.6680],[110.0161, -7.9980],[110.2530, -7.9980],[110.2530, -7.6680],[110.0161, -7.6680]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "NAME_2": "Kab. Gunungkidul",
+        "TYPE_2": "Kabupaten",
+        "namapemda_match": "KAB. GUNUNGKIDUL"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[110.4199, -7.7500],[110.4199, -8.1900],[110.9400, -8.1900],[110.9400, -7.7500],[110.4199, -7.7500]]]
+      }
+    }
+  ]
+}
