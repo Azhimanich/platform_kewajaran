@@ -1,8 +1,8 @@
 """
-Dimensi 1 – Kewajaran Historis (Biaya Satuan Kinerja).
+Dimensi 1 - Kewajaran Historis (Biaya Satuan Kinerja).
 Membandingkan BSK tahun berjalan dengan rata-rata BSK tahun-tahun SEBELUMNYA.
 Menghitung besarnya PERUBAHAN ANGGARAN (naik/turun) dan konversi ke skor bertingkat.
-Tidak ada hardcode — jika tidak ada data historis, skor = NaN.
+Tidak ada hardcode - jika tidak ada data historis, skor = NaN.
 """
 import pandas as pd
 import numpy as np
@@ -10,33 +10,33 @@ import numpy as np
 def _calculate_score(change_pct: float) -> float:
     """
     Konversi persentase perubahan absolut ke skor 0-100.
-    Sistem bertingkat (tiered) — lebih adil dan transparan:
+    Sistem bertingkat (tiered) - lebih adil dan transparan:
     
     | Perubahan  | Skor    | Interpretasi         |
     |------------|---------|----------------------|
-    | 0 – 10%    | 100–95  | Sangat Wajar         |
-    | 10 – 25%   | 95–85   | Wajar                |
-    | 25 – 50%   | 85–70   | Perlu Perhatian      |
-    | 50 – 100%  | 70–50   | Perlu Evaluasi       |
-    | 100 – 200% | 50–25   | Tidak Wajar          |
-    | > 200%     | 25–0    | Sangat Tidak Wajar   |
+    | 0 - 10%    | 100-95  | Sangat Wajar         |
+    | 10 - 25%   | 95-85   | Wajar                |
+    | 25 - 50%   | 85-70   | Perlu Perhatian      |
+    | 50 - 100%  | 70-50   | Perlu Evaluasi       |
+    | 100 - 200% | 50-25   | Tidak Wajar          |
+    | > 200%     | 25-0    | Sangat Tidak Wajar   |
     
     Interpolasi linier di dalam setiap tier.
     """
     p = abs(change_pct)
     
     if p <= 0.10:
-        return 100 - (p / 0.10) * 5           # 100 → 95
+        return 100 - (p / 0.10) * 5           # 100 -> 95
     elif p <= 0.25:
-        return 95 - ((p - 0.10) / 0.15) * 10  # 95 → 85
+        return 95 - ((p - 0.10) / 0.15) * 10  # 95 -> 85
     elif p <= 0.50:
-        return 85 - ((p - 0.25) / 0.25) * 15  # 85 → 70
+        return 85 - ((p - 0.25) / 0.25) * 15  # 85 -> 70
     elif p <= 1.00:
-        return 70 - ((p - 0.50) / 0.50) * 20  # 70 → 50
+        return 70 - ((p - 0.50) / 0.50) * 20  # 70 -> 50
     elif p <= 2.00:
-        return 50 - ((p - 1.00) / 1.00) * 25  # 50 → 25
+        return 50 - ((p - 1.00) / 1.00) * 25  # 50 -> 25
     else:
-        return max(0, 25 - ((p - 2.00) / 3.00) * 25)  # 25 → 0
+        return max(0, 25 - ((p - 2.00) / 3.00) * 25)  # 25 -> 0
 
 
 def calculate(df: pd.DataFrame) -> pd.DataFrame:
@@ -93,7 +93,7 @@ def calculate(df: pd.DataFrame) -> pd.DataFrame:
             # Wildavsky's (1964) Incrementalism Gaussian Decay model:
             # Score = 100 * exp(-0.5 * (p / sigma)^2)
             # Calibrated so that a 50% change (p = 0.50) yields a score of exactly 50.0.
-            # sigma = 0.50 / sqrt(2 * ln(2)) ≈ 0.42466
+            # sigma = 0.50 / sqrt(2 * ln(2))  0.42466
             sigma_d1 = 0.50 / np.sqrt(2 * np.log(2))
             p = change.abs()
             scores = 100.0 * np.exp(-0.5 * (p / sigma_d1) ** 2)

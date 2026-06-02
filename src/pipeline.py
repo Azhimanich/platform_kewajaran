@@ -1,5 +1,5 @@
 """
-Pipeline utama – Mengeksekusi seluruh dimensi dan IKP.
+Pipeline utama - Mengeksekusi seluruh dimensi dan IKP.
 Trigger cache invalidate
 """
 import streamlit as st
@@ -13,7 +13,7 @@ from src.dimensions import dimensi_4_perencanaan
 from src.dimensions import dimensi_5_kualitas_data
 from src.ikp_calculator import calculate_ikp
 
-@st.cache_data(show_spinner="⚙️ Mengkalkulasi 5 Dimensi Kewajaran & IKP...")
+@st.cache_data(show_spinner="[Setup] Mengkalkulasi 5 Dimensi Kewajaran & IKP...")
 def get_processed_data() -> pd.DataFrame:
     """
     Menjalankan seluruh pipeline data dari raw CSV hingga kalkulasi skor akhir.

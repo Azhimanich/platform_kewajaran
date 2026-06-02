@@ -1,5 +1,5 @@
 """
-Dimensi 2 – Kewajaran Regional (Spatial Comparison).
+Dimensi 2 - Kewajaran Regional (Spatial Comparison).
 Membandingkan BSK daerah dengan rata-rata regional TANPA memasukkan daerah itu sendiri.
 Z-Score dihitung terhadap distribusi daerah LAIN (leave-one-out).
 """
@@ -82,8 +82,8 @@ def calculate(df: pd.DataFrame) -> pd.DataFrame:
         # Anselin's (1995) Spatial Autocorrelation (LISA) Asymmetric Gaussian Decay model:
         # Score = 100 * exp(-0.5 * (z / sigma_z)^2)
         # Asymmetric thresholds to accommodate high tolerance for under-spending (safer):
-        # - Over budget (z >= 0): sigma_high = 1.96 / sqrt(2 * ln(2)) ≈ 1.6647 (Score = 50 at 95% LISA outlier limit, z = 1.96)
-        # - Under budget (z < 0): sigma_low = 3.00 / sqrt(2 * ln(2)) ≈ 2.5480 (Score = 50 at z = -3.00)
+        # - Over budget (z >= 0): sigma_high = 1.96 / sqrt(2 * ln(2))  1.6647 (Score = 50 at 95% LISA outlier limit, z = 1.96)
+        # - Under budget (z < 0): sigma_low = 3.00 / sqrt(2 * ln(2))  2.5480 (Score = 50 at z = -3.00)
         sigma_high = 1.96 / np.sqrt(2 * np.log(2))
         sigma_low = 3.00 / np.sqrt(2 * np.log(2))
         

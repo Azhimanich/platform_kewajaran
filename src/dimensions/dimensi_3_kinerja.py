@@ -1,7 +1,7 @@
 """
-Dimensi 3 – Kewajaran Kinerja (Analisis Prognosis).
+Dimensi 3 - Kewajaran Kinerja (Analisis Prognosis).
 Mengevaluasi kewajaran target usulan berdasarkan efisiensi historis.
-Tidak ada hardcode — jika tidak ada data realisasi historis, skor = NaN.
+Tidak ada hardcode - jika tidak ada data realisasi historis, skor = NaN.
 """
 import pandas as pd
 import numpy as np
@@ -60,7 +60,7 @@ def calculate(df: pd.DataFrame) -> pd.DataFrame:
             # Locke & Latham's (1990) SMART Goal Setting and Performance Realism model:
             # Score = 100 * exp(-0.5 * (ln(ratio) / sigma_r)^2)
             # Calibrated so that a 50% under-achievement (ratio = 0.5) or 200% unrealistic promise (ratio = 2.0) yields exactly 50.0.
-            # sigma_r = ln(2.0) / sqrt(2 * ln(2)) ≈ 0.5888
+            # sigma_r = ln(2.0) / sqrt(2 * ln(2))  0.5888
             sigma_r = np.log(2.0) / np.sqrt(2 * np.log(2))
             valid_target = valid_calc & res["target"].notna() & (res["target"] > 0) & (res["prognosis_output"] > 0)
             ratio = res.loc[valid_target, "target"] / res.loc[valid_target, "prognosis_output"]

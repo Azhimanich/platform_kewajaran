@@ -1,18 +1,18 @@
 """
-Dimensi 5 – Kewajaran Statistik (Deteksi Anomali IQR + Gaussian Decay Scoring).
+Dimensi 5 - Kewajaran Statistik (Deteksi Anomali IQR + Gaussian Decay Scoring).
 
 Mendeteksi outlier BSK menggunakan metode Interquartile Range (IQR) dari Tukey (1977),
 kemudian mengkonversi jarak dari batas IQR menjadi skor kontinu menggunakan fungsi
-Gaussian Decay — bukan flat scoring.
+Gaussian Decay - bukan flat scoring.
 
 Referensi Akademik:
   [1] Tukey, J.W. (1977). Exploratory Data Analysis. Addison-Wesley.
-      — Dasar metode IQR dan konsep "fence" (inner fence = 1.5×IQR, outer fence = 3×IQR).
+      - Dasar metode IQR dan konsep "fence" (inner fence = 1.5xIQR, outer fence = 3xIQR).
   [2] Iglewicz, B. & Hoaglin, D.C. (1993). How to Detect and Handle Outliers.
-      ASQC Quality Press. — Modified Z-Score dan MAD-based outlier detection.
+      ASQC Quality Press. - Modified Z-Score dan MAD-based outlier detection.
   [3] Hubert, M. & Vandervieren, E. (2008). An Adjusted Boxplot for Skewed
       Distributions. Computational Statistics & Data Analysis, 52(12), 5186-5201.
-      — IQR-based outlier detection untuk distribusi non-normal.
+      - IQR-based outlier detection untuk distribusi non-normal.
 
 Mekanisme Skoring:
   1. Hitung IQR Fence Distance (d):
@@ -21,21 +21,21 @@ Mekanisme Skoring:
      - Jika BSK > Q3:            d = (BSK - Q3) / IQR
 
   2. Konversi ke skor menggunakan Gaussian Decay:
-     Score = 100 × exp(-0.5 × (d / σ)²)
+     Score = 100 x exp(-0.5 x (d / ))
 
-     dengan σ = 1.5 / √(2 × ln(2)) ≈ 1.2739
+     dengan  = 1.5 / (2 x ln(2))  1.2739
 
      Kalibrasi:
-       d = 0.0  →  Score = 100.0  (dalam kotak IQR, wajar)
-       d = 0.5  →  Score ≈  92.6  (mendekati batas, masih wajar)
-       d = 1.0  →  Score ≈  73.4  (mendekati fence, perlu perhatian)
-       d = 1.5  →  Score =  50.0  (tepat di Tukey inner fence)
-       d = 2.0  →  Score ≈  29.2  (di luar inner fence)
-       d = 3.0  →  Score ≈   6.3  (tepat di Tukey outer fence)
+       d = 0.0  ->  Score = 100.0  (dalam kotak IQR, wajar)
+       d = 0.5  ->  Score   92.6  (mendekati batas, masih wajar)
+       d = 1.0  ->  Score   73.4  (mendekati fence, perlu perhatian)
+       d = 1.5  ->  Score =  50.0  (tepat di Tukey inner fence)
+       d = 2.0  ->  Score   29.2  (di luar inner fence)
+       d = 3.0  ->  Score    6.3  (tepat di Tukey outer fence)
 
   Properti penting:
   - Skor bersifat KONTINU dan SMOOTH, bukan flat/diskrit.
-  - Kalibrasi σ dipilih agar skor TEPAT 50 di inner fence (d=1.5), konsisten
+  - Kalibrasi  dipilih agar skor TEPAT 50 di inner fence (d=1.5), konsisten
     dengan threshold standar Tukey (1977).
   - Fungsi Gaussian dipilih karena properti matematis yang well-established
     dalam teori probabilitas dan kernel density estimation (Silverman, 1986).
@@ -44,19 +44,19 @@ import pandas as pd
 import numpy as np
 
 # Konstanta Gaussian Decay
-# σ dikalibrasi agar Score = 50 tepat di Tukey inner fence (d = 1.5)
-# Derivasi: 50 = 100 × exp(-0.5 × (1.5/σ)²)
-#           0.5 = exp(-0.5 × (1.5/σ)²)
-#           ln(0.5) = -0.5 × (1.5/σ)²
-#           σ = 1.5 / √(2 × ln(2)) ≈ 1.2739
-SIGMA_DECAY = 1.5 / np.sqrt(2 * np.log(2))  # ≈ 1.2739
+#  dikalibrasi agar Score = 50 tepat di Tukey inner fence (d = 1.5)
+# Derivasi: 50 = 100 x exp(-0.5 x (1.5/))
+#           0.5 = exp(-0.5 x (1.5/))
+#           ln(0.5) = -0.5 x (1.5/)
+#            = 1.5 / (2 x ln(2))  1.2739
+SIGMA_DECAY = 1.5 / np.sqrt(2 * np.log(2))  #  1.2739
 
 
 def _gaussian_decay_score(d: np.ndarray) -> np.ndarray:
     """
     Konversi IQR fence distance ke skor 0-100 menggunakan Gaussian Decay.
     
-    Score = 100 × exp(-0.5 × (d / σ)²)
+    Score = 100 x exp(-0.5 x (d / ))
     
     Parameters:
         d: IQR fence distance (0 = dalam [Q1,Q3], 1.5 = inner fence, 3.0 = outer fence)
@@ -145,7 +145,7 @@ def calculate(df: pd.DataFrame) -> pd.DataFrame:
             if iqr_zero.any():
                 median_val = (q1 + q3) / 2  # = Q1 = Q3 saat IQR=0
                 d = d.fillna(0)
-                # Jika BSK = median → d = 0, jika berbeda → d proporsional
+                # Jika BSK = median -> d = 0, jika berbeda -> d proporsional
                 diff_mask = iqr_zero & (bsk != median_val) & valid_calc
                 if diff_mask.any():
                     d.loc[diff_mask] = np.abs(bsk[diff_mask] - median_val[diff_mask]) / median_val[diff_mask].replace(0, 1)

@@ -13,7 +13,7 @@ inject_css()
 render_sidebar()
 render_header()
 
-st.title("📊 Dashboard Utama Kewajaran Anggaran")
+st.title("[Chart] Dashboard Utama Kewajaran Anggaran")
 
 # Load data
 df = get_processed_data()
@@ -72,7 +72,7 @@ def agg_with_coverage(group):
 
 summary_df = filtered_df.groupby(["kodepemda", "pemda_label"], dropna=False).apply(agg_with_coverage).reset_index()
 
-# Pisahkan Kab/Kota dan Provinsi — konteks utama adalah perbandingan antar Kab/Kota
+# Pisahkan Kab/Kota dan Provinsi - konteks utama adalah perbandingan antar Kab/Kota
 summary_df["is_provinsi"] = summary_df["pemda_label"].str.contains("Prov.", case=False, na=False)
 summary_df = summary_df.sort_values(by=["is_provinsi", "kodepemda"], ascending=[True, True]).reset_index(drop=True)
 
@@ -191,14 +191,14 @@ table_css = """
 """
 
 st.markdown(f"{table_css}<div class='custom-summary-table'>{full_table_html}</div>", unsafe_allow_html=True)
-st.caption("ℹ️ Angka dalam tanda kurung (%) menunjukkan **cakupan data** — persentase sub-kegiatan yang memiliki data valid untuk dimensi tersebut. Contoh: *74.3 (23%)* berarti rata-rata skor 74.3 dihitung dari hanya 23% sub-kegiatan yang memiliki data historis.")
+st.caption("[Info] Angka dalam tanda kurung (%) menunjukkan **cakupan data** - persentase sub-kegiatan yang memiliki data valid untuk dimensi tersebut. Contoh: *74.3 (23%)* berarti rata-rata skor 74.3 dihitung dari hanya 23% sub-kegiatan yang memiliki data historis.")
 
 st.divider()
 
 # ==========================================
 # TOP ANOMALI SECTION
 # ==========================================
-st.subheader("🚩 Top 5 Sub-Kegiatan Perlu Perhatian")
+st.subheader(" Top 5 Sub-Kegiatan Perlu Perhatian")
 top_anomali = filtered_df.sort_values(by="ikp_score", ascending=True).head(5)
 
 if not top_anomali.empty:
@@ -216,7 +216,7 @@ if not top_anomali.empty:
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; border-top: 1px solid #f1f5f9; padding-top: 10px;">
                     <span style="background: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 800;">IKP: {row['ikp_score']:.1f}</span>
-                    <a href="{url}" target="_self" style="font-size: 0.8rem; color: #3b82f6; text-decoration: none; font-weight: 700;">Detail →</a>
+                    <a href="{url}" target="_self" style="font-size: 0.8rem; color: #3b82f6; text-decoration: none; font-weight: 700;">Detail -></a>
                 </div>
             </div>
             """, unsafe_allow_html=True)

@@ -1,5 +1,5 @@
 """
-data_loader.py — Memuat dan membersihkan seluruh data CSV DIY (2024-2027).
+data_loader.py - Memuat dan membersihkan seluruh data CSV DIY (2024-2027).
 Menghasilkan DataFrame tunggal yang siap dipakai semua halaman.
 """
 import os
@@ -28,7 +28,7 @@ PEMDA_MAP = {
     "DAERAH ISTIMEWA YOGYAKARTA": "Prov. DIY",
 }
 
-@st.cache_data(show_spinner="⏳ Memuat data dari Database/Parquet...")
+@st.cache_data(show_spinner=" Memuat data dari Database/Parquet...")
 def load_raw() -> pd.DataFrame:
     """Membaca data dari file Parquet (jika ada) atau database MySQL."""
     
@@ -59,7 +59,7 @@ def load_raw() -> pd.DataFrame:
 def _process_df(df: pd.DataFrame) -> pd.DataFrame:
     """Helper fungsi untuk membersihkan tipe data dataframe mentah."""
 
-    # ── Normalise types ──────────────────────────────────────────────────────
+    #  Normalise types 
     df["tahun"]  = pd.to_numeric(df["tahun"],  errors="coerce").astype("Int64")
     df["pagu"]   = pd.to_numeric(df["pagu"],   errors="coerce").fillna(0)
     df["target"] = pd.to_numeric(df["target"], errors="coerce")  # NaN stays
@@ -77,7 +77,7 @@ def _process_df(df: pd.DataFrame) -> pd.DataFrame:
     # Drop rows with no sub-kegiatan code
     df = df.dropna(subset=["kodesubkegiatan"])
 
-    # ── Pemda label ──────────────────────────────────────────────────────────
+    #  Pemda label 
     df["pemda_label"] = df["namapemda"].map(PEMDA_MAP).fillna(df["namapemda"])
 
     return df.reset_index(drop=True)

@@ -103,7 +103,7 @@ def main():
     try:
         importer = DataImporter()
         importer.process_all_files()
-        print("\n✅ Data import completed successfully!")
+        print("\n[OK] Data import completed successfully!")
         print("\nDatabase Summary:")
         print("- Database: kewajaran")
         print("- Tables: pemdas, skpds, nomenklaturs, usulan_anggarans, realisasi_anggarans, users")
@@ -112,7 +112,7 @@ def main():
         print("- Realisasi data generated for 2024-2025")
         
     except Exception as e:
-        print(f"❌ Import failed: {e}")
+        print(f" Import failed: {e}")
     finally:
         if 'importer' in locals():
             importer.disconnect_db()

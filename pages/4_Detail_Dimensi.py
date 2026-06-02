@@ -9,7 +9,7 @@ inject_css()
 render_sidebar()
 render_header()
 
-st.title("📑 Detail Kalkulasi Per Dimensi")
+st.title("[Doc] Detail Kalkulasi Per Dimensi")
 st.markdown("Halaman ini menyajikan rincian teknis perhitungan setiap dimensi kewajaran untuk suatu sub-kegiatan.")
 
 df = get_processed_data()
@@ -98,7 +98,7 @@ if selected_sub:
         st.dataframe(info_df, use_container_width=True, hide_index=True)
         
         st.divider()
-        st.markdown("<h2 style='text-align:center;color:#1e3a8a;margin-bottom:30px;'>🏁 Rekapitulasi Indeks Kewajaran Penganggaran (IKP)</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align:center;color:#1e3a8a;margin-bottom:30px;'>[Rekap] Rekapitulasi Indeks Kewajaran Penganggaran (IKP)</h2>", unsafe_allow_html=True)
         
         from src.ikp_calculator import WEIGHTS, DIM_LABELS
         
@@ -144,7 +144,7 @@ if selected_sub:
             
             # Show dynamic weighting notice if not all dimensions available
             if valid_weight < 1.0:
-                st.warning(f"⚠️ Hanya {int(dims_used)} dari 5 dimensi yang memiliki data. Bobot di-redistribusi secara proporsional (Dynamic Weighting).")
+                st.warning(f"[Warning] Hanya {int(dims_used)} dari 5 dimensi yang memiliki data. Bobot di-redistribusi secara proporsional (Dynamic Weighting).")
             
             table_rows = ""
             for item in calc_data:
@@ -196,7 +196,7 @@ if selected_sub:
             d1_score = row.get("dimensi_1_score", pd.NA)
             
             st.markdown(r"""
-            **Metodologi — Incremental Budgeting (Wildavsky, 1964):**  
+            **Metodologi - Incremental Budgeting (Wildavsky, 1964):**  
             Mengevaluasi stabilitas dan prediktabilitas perencanaan anggaran dengan membandingkan Biaya Satuan Kinerja (BSK) tahun berjalan terhadap rata-rata historis tahun-tahun sebelumnya. Deviasi dari stabilitas historis dihitung menggunakan **Gaussian Decay Function**.
             
             **Formula Gaussian Decay (Wildavsky):**
@@ -216,7 +216,7 @@ if selected_sub:
             c2.metric("Rata-rata BSK Historis", format_currency(hist_avg) if pd.notna(hist_avg) else "-")
             
             if pd.notna(change):
-                arrow = "🔺" if change >= 0 else "🔻"
+                arrow = "" if change >= 0 else ""
                 c3.metric("Perubahan Anggaran", f"{arrow} {arah} {change_abs*100:.1f}%")
             else:
                 c3.metric("Perubahan Anggaran", "-")
@@ -229,21 +229,44 @@ if selected_sub:
             # Detail Perhitungan Transparan
             if pd.notna(bsk) and pd.notna(hist_avg) and pd.notna(change):
                 sigma_val = 0.50 / np.sqrt(2 * np.log(2))
+                pagu_val = row.get('pagu', 0)
+                target_val = row.get('target', 0)
+                score_verify = 100 * np.exp(-0.5 * (abs(change) / sigma_val) ** 2)
                 
-                formula_html = (
-                    f"<div style='background:#f8fafc;padding:16px;border-radius:8px;border-left:4px solid #1e3a8a;margin:10px 0;font-family:monospace;font-size:0.9rem;'>"
-                    f"<b>📐 Detail Perhitungan (Wildavsky Incrementalism):</b><br>"
-                    f"1. Hitung BSK = Pagu / Target = {format_currency(row.get('pagu',0))} / {format_number(row.get('target',0), 2)} = <b>{format_currency(bsk)}</b><br>"
-                    f"2. Hitung Perubahan (x) = (BSK - BSK_hist) / BSK_hist = ({format_currency(bsk)} - {format_currency(hist_avg)}) / {format_currency(hist_avg)} = <b>{change:+.4f} ({change*100:+.1f}%)</b><br>"
-                    f"3. Hitung Gaussian Decay Score:<br>"
-                    f"   Score = 100 × exp(-0.5 × (|x| / σ)²)<br>"
-                    f"   Score = 100 × exp(-0.5 × ({change_abs:.4f} / {sigma_val:.4f})²) = <b>{d1_score:.1f}</b>"
-                    f"</div>"
-                )
-                st.markdown(formula_html, unsafe_allow_html=True)
+                st.markdown(f"""
+                <div style='background:linear-gradient(135deg,#f8fafc,#eef2ff);padding:20px;border-radius:12px;border:1px solid #c7d2fe;margin:12px 0;'>
+                <h4 style='color:#1e3a8a;margin:0 0 16px 0;'>[Kalkulasi] Langkah Perhitungan Dimensi 1</h4>
+                
+                <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
+                <b style='color:#1e40af;'>Langkah 1 - Hitung Biaya Satuan Kinerja (BSK)</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>BSK = Pagu Anggaran / Target Output</span><br>
+                <code style='font-size:0.95em;'>BSK = {format_currency(pagu_val)} / {format_number(target_val, 2)} = <b>{format_currency(bsk)}</b></code>
+                </div>
+                
+                <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
+                <b style='color:#1e40af;'>Langkah 2 - Ambil Rata-rata BSK Historis</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Rata-rata BSK dari tahun-tahun sebelumnya (lihat tabel di bawah)</span><br>
+                <code style='font-size:0.95em;'>BSK Historis = <b>{format_currency(hist_avg)}</b></code>
+                </div>
+                
+                <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #f59e0b;'>
+                <b style='color:#92400e;'>Langkah 3 - Hitung Persentase Perubahan (x)</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>x = (BSK Sekarang - BSK Historis) / BSK Historis</span><br>
+                <code style='font-size:0.95em;'>x = ({format_currency(bsk)} - {format_currency(hist_avg)}) / {format_currency(hist_avg)}</code><br>
+                <code style='font-size:0.95em;'>x = <b>{change:+.4f}</b> -> Perubahan <b>{arah} {change_abs*100:.1f}%</b></code>
+                </div>
+                
+                <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #10b981;'>
+                <b style='color:#065f46;'>Langkah 4 - Hitung Skor Gaussian Decay</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Score = 100 x exp(-0.5 x (|x| / sigma)^2), sigma = {sigma_val:.4f}</span><br>
+                <code style='font-size:0.95em;'>Score = 100 x exp(-0.5 x ({change_abs:.4f} / {sigma_val:.4f})^2)</code><br>
+                <code style='font-size:1.1em;'><b style='color:#059669;'>Skor Dimensi 1 = {score_verify:.1f}</b></code>
+                </div>
+                </div>
+                """, unsafe_allow_html=True)
                 
                 tier_html = (
-                    "<details style='margin-top:8px;'><summary style='cursor:pointer;color:#1e3a8a;font-weight:bold;font-size:0.85rem;'>📊 Tabel Referensi Skor (Gaussian Decay)</summary>"
+                    "<details style='margin-top:8px;'><summary style='cursor:pointer;color:#1e3a8a;font-weight:bold;font-size:0.85rem;'>[Chart] Tabel Referensi Skor (Gaussian Decay)</summary>"
                     "<table style='width:100%;border-collapse:collapse;font-size:0.85rem;margin-top:8px;'>"
                     "<tr style='background:#f1f5f9;'><th style='padding:8px;text-align:center;border-bottom:1px solid #cbd5e1;'>Perubahan Absolut (\|x\|)</th><th style='padding:8px;text-align:center;border-bottom:1px solid #cbd5e1;'>Skor</th><th style='padding:8px;text-align:left;border-bottom:1px solid #cbd5e1;'>Interpretasi</th></tr>"
                     "<tr style='background:#f0fdf4;'><td style='padding:6px 8px;text-align:center;'>0% (Sempurna)</td><td style='padding:6px 8px;text-align:center;font-weight:bold;'>100.0</td><td style='padding:6px 8px;color:#22c55e;'>Sangat Stabil (Sesuai Tren)</td></tr>"
@@ -259,7 +282,7 @@ if selected_sub:
                 )
                 st.markdown(tier_html, unsafe_allow_html=True)
             elif pd.isna(d1_score):
-                st.caption("ℹ️ Dimensi ini tidak memiliki data historis pembanding, sehingga tidak berkontribusi terhadap IKP (Dynamic Weighting).")
+                st.caption("[Info] Dimensi ini tidak memiliki data historis pembanding, sehingga tidak berkontribusi terhadap IKP (Dynamic Weighting).")
             
             st.markdown("##### Data Historis Sub-Kegiatan Ini")
             # Fetch historical data
@@ -297,7 +320,7 @@ if selected_sub:
             d2_score = row.get("dimensi_2_score", pd.NA)
             
             st.markdown(r"""
-            **Metodologi — Spatial Autocorrelation (Anselin, 1995 - LISA):**  
+            **Metodologi - Spatial Autocorrelation (Anselin, 1995 - LISA):**  
             Menilai kewajaran BSK daerah dibandingkan dengan rata-rata regional menggunakan standar deviasi (**Z-Score**) melalui pendekatan *Leave-One-Out* (mengeluarkan daerah subjek dari perhitungan rata-rata regional). Deviasi dikonversi menggunakan **Asymmetric Gaussian Decay Function**.
             
             **Formula Asymmetric Z-Score Decay (LISA):**
@@ -314,8 +337,8 @@ if selected_sub:
             z_score = row.get("dimensi_2_zscore", pd.NA)
             
             c1.metric("BSK Daerah Ini", format_currency(cpu) if pd.notna(cpu) else "-")
-            c2.metric("Rata-rata Regional (μ)", format_currency(med_cpu) if pd.notna(med_cpu) else "-")
-            c3.metric("Std. Deviasi (σ)", format_currency(std_cpu) if pd.notna(std_cpu) and std_cpu > 0 else "-")
+            c2.metric("Rata-rata Regional ()", format_currency(med_cpu) if pd.notna(med_cpu) else "-")
+            c3.metric("Std. Deviasi ()", format_currency(std_cpu) if pd.notna(std_cpu) and std_cpu > 0 else "-")
             
             if pd.isna(d2_score):
                 c4.metric("Skor Dimensi 2", "Tidak Ada Pembanding")
@@ -327,30 +350,47 @@ if selected_sub:
             if pd.notna(z_score) and pd.notna(cpu) and pd.notna(med_cpu):
                 az = abs(z_score)
                 if az < 1.0: zona = "Wajar (|Z| < 1.0)"
-                elif az < 1.96: zona = "Perlu Perhatian (1.0 ≤ |Z| < 1.96)"
-                else: zona = "Outlier Regional (|Z| ≥ 1.96)"
+                elif az < 1.96: zona = "Perlu Perhatian (1.0 <= |Z| < 1.96)"
+                else: zona = "Outlier Regional (|Z| >= 1.96)"
                 
                 sigma_high = 1.96 / np.sqrt(2 * np.log(2))
                 sigma_low = 3.00 / np.sqrt(2 * np.log(2))
                 sigma_actual = sigma_high if z_score >= 0 else sigma_low
+                sigma_label = "Over-budgeting (z>=0), sigma_high" if z_score >= 0 else "Under-budgeting (z<0), sigma_low"
+                score_verify = 100 * np.exp(-0.5 * (z_score / sigma_actual) ** 2)
+                std_display = format_currency(std_cpu) if pd.notna(std_cpu) and std_cpu > 0 else "0"
                 
-                formula_html = (
-                    f"<div style='background:#f8fafc;padding:16px;border-radius:8px;border-left:4px solid #1e3a8a;margin:10px 0;font-family:monospace;font-size:0.9rem;'>"
-                    f"<b>📐 Detail Perhitungan (Leave-One-Out LISA):</b><br>"
-                    f"μ (Regional Mean, N={int(n_pemb)} daerah lain) = <b>{format_currency(med_cpu)}</b><br>"
-                    f"σ (Regional Std. Dev, N={int(n_pemb)} daerah lain) = <b>{format_currency(std_cpu) if pd.notna(std_cpu) and std_cpu > 0 else '0'}</b><br>"
-                    f"Z-Score = (BSK - μ) / σ = ({format_currency(cpu)} - {format_currency(med_cpu)}) / {format_currency(std_cpu) if pd.notna(std_cpu) and std_cpu > 0 else '0'} = <b>{z_score:+.4f}</b><br>"
-                    f"Zona Distribusi: <b>{zona}</b><br><br>"
-                    f"Gaussian Decay Score:<br>"
-                    f"   σ_z Terpilih = <b>{sigma_actual:.4f}</b> <i>({'Over-budgeting (z≥0)' if z_score >= 0 else 'Under-budgeting (z<0)'})</i><br>"
-                    f"   Score = 100 × exp(-0.5 × (Z / σ_z)²)<br>"
-                    f"   Score = 100 × exp(-0.5 × ({z_score:.4f} / {sigma_actual:.4f})²) = <b>{d2_score:.1f}</b>"
-                    f"</div>"
-                )
-                st.markdown(formula_html, unsafe_allow_html=True)
+                st.markdown(f"""
+                <div style='background:linear-gradient(135deg,#f8fafc,#eef2ff);padding:20px;border-radius:12px;border:1px solid #c7d2fe;margin:12px 0;'>
+                <h4 style='color:#1e3a8a;margin:0 0 16px 0;'>[Kalkulasi] Langkah Perhitungan Dimensi 2</h4>
+                
+                <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
+                <b style='color:#1e40af;'>Langkah 1 - Hitung Rata-rata & Std. Deviasi Regional (Leave-One-Out)</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Dihitung dari {int(n_pemb)} daerah lain (tanpa daerah ini)</span><br>
+                <code style='font-size:0.95em;'>mean (Rata-rata Regional) = <b>{format_currency(med_cpu)}</b></code><br>
+                <code style='font-size:0.95em;'>sigma (Std. Deviasi Regional) = <b>{std_display}</b></code>
+                </div>
+                
+                <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #f59e0b;'>
+                <b style='color:#92400e;'>Langkah 2 - Hitung Z-Score</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Z = (BSK Daerah - mean) / sigma</span><br>
+                <code style='font-size:0.95em;'>Z = ({format_currency(cpu)} - {format_currency(med_cpu)}) / {std_display}</code><br>
+                <code style='font-size:0.95em;'>Z = <b>{z_score:+.4f}</b> -> Zona: <b>{zona}</b></code>
+                </div>
+                
+                <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #10b981;'>
+                <b style='color:#065f46;'>Langkah 3 - Hitung Skor Asymmetric Gaussian Decay</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Penalti asimetris: over-budgeting lebih berat dari under-budgeting</span><br>
+                <code style='font-size:0.95em;'>sigma_z terpilih = <b>{sigma_actual:.4f}</b> ({sigma_label})</code><br>
+                <code style='font-size:0.95em;'>Score = 100 x exp(-0.5 x (Z / sigma_z)^2)</code><br>
+                <code style='font-size:0.95em;'>Score = 100 x exp(-0.5 x ({z_score:.4f} / {sigma_actual:.4f})^2)</code><br>
+                <code style='font-size:1.1em;'><b style='color:#059669;'>Skor Dimensi 2 = {score_verify:.1f}</b></code>
+                </div>
+                </div>
+                """, unsafe_allow_html=True)
                 
                 tier_html = (
-                    "<details style='margin-top:8px;'><summary style='cursor:pointer;color:#1e3a8a;font-weight:bold;font-size:0.85rem;'>📊 Tabel Kalibrasi Skor Spasial (Asymmetric LISA)</summary>"
+                    "<details style='margin-top:8px;'><summary style='cursor:pointer;color:#1e3a8a;font-weight:bold;font-size:0.85rem;'>[Chart] Tabel Kalibrasi Skor Spasial (Asymmetric LISA)</summary>"
                     "<table style='width:100%;border-collapse:collapse;font-size:0.85rem;margin-top:8px;'>"
                     "<tr style='background:#f1f5f9;'><th style='padding:8px;text-align:center;border-bottom:1px solid #cbd5e1;'>Z-Score</th><th style='padding:8px;text-align:center;border-bottom:1px solid #cbd5e1;'>Skor</th><th style='padding:8px;text-align:left;border-bottom:1px solid #cbd5e1;'>Interpretasi</th></tr>"
                     "<tr style='background:#f0fdf4;'><td style='padding:6px 8px;text-align:center;'>0.0 (Sama Rata)</td><td style='padding:6px 8px;text-align:center;font-weight:bold;'>100.0</td><td style='padding:6px 8px;color:#22c55e;'>Sangat Wajar (Rata-rata Regional)</td></tr>"
@@ -362,13 +402,13 @@ if selected_sub:
                     "<tr style='background:#fef2f2;'><td style='padding:6px 8px;text-align:center;font-weight:bold;'>-3.0 (Under Limit)</td><td style='padding:6px 8px;text-align:center;font-weight:bold;'>50.0</td><td style='padding:6px 8px;color:#eab308;font-weight:bold;'>Batas Kritis Under-budgeting (Kualitas Risiko)</td></tr>"
                     "</table>"
                     "<div style='margin-top:8px;font-size:0.8rem;color:#64748b;'>"
-                    "<b>Referensi Akademik:</b> Anselin, L. (1995). Local Indicators of Spatial Association—LISA. <i>Geographical Analysis</i>, 27(2), 93-115."
+                    "<b>Referensi Akademik:</b> Anselin, L. (1995). Local Indicators of Spatial Association-LISA. <i>Geographical Analysis</i>, 27(2), 93-115."
                     "</div>"
                     "</details>"
                 )
                 st.markdown(tier_html, unsafe_allow_html=True)
                 
-            # ── TABEL KOMPARASI ──
+            #  TABEL KOMPARASI 
             st.markdown("##### Tabel Distribusi Seluruh Pemda (Tahun yang Sama)")
             spasial_df = df[
                 (df["kodesubkegiatan"] == row["kodesubkegiatan"]) & 
@@ -402,9 +442,9 @@ if selected_sub:
                 
                 def get_z_status(z):
                     az = abs(z)
-                    if az < 1: return "✅ Wajar"
-                    elif az < 2: return "⚠️ Perhatian"
-                    else: return "🚨 Outlier"
+                    if az < 1: return "[OK] Wajar"
+                    elif az < 2: return "[Warning] Perhatian"
+                    else: return "[!] Outlier"
                 
                 def get_skor_d2(z):
                     if z <= 0:
@@ -417,7 +457,7 @@ if selected_sub:
                 
                 display_sp = spasial_df[["pemda_label", "pagu", "target", "bsk", "z_loo", "skor_d2", "status"]].copy()
                 is_current = display_sp["pemda_label"] == row["pemda_label"]
-                display_sp.loc[is_current, "pemda_label"] = display_sp.loc[is_current, "pemda_label"] + " ← INI"
+                display_sp.loc[is_current, "pemda_label"] = display_sp.loc[is_current, "pemda_label"] + " <- INI"
                 display_sp["pagu"] = display_sp["pagu"].apply(format_currency)
                 display_sp["bsk_fmt"] = display_sp["bsk"].apply(format_currency)
                 display_sp["z_loo"] = display_sp["z_loo"].apply(lambda x: f"{x:+.3f}")
@@ -434,8 +474,8 @@ if selected_sub:
                 
                 st.dataframe(display_sp_show, use_container_width=True, hide_index=True)
                 
-                # ── VISUALISASI: Bell Curve Z-Score ──
-                st.markdown("##### Visualisasi Distribusi Normal — Deteksi Outlier Z-Score")
+                #  VISUALISASI: Bell Curve Z-Score 
+                st.markdown("##### Visualisasi Distribusi Normal - Deteksi Outlier Z-Score")
                 
                 # Check if we have valid LOO Z-scores
                 if "z_loo" in spasial_df.columns:
@@ -472,9 +512,9 @@ if selected_sub:
                     # Vertical reference lines
                     for zv, label, color, dash in [
                         (0, "z=0", "#374151", "dash"),
-                        (-1, "z=−1", "#22c55e", "solid"), (1, "z=+1", "#22c55e", "solid"),
-                        (-2, "z=−2", "#eab308", "solid"), (2, "z=+2", "#eab308", "solid"),
-                        (-3, "z=−3", "#ef4444", "solid"), (3, "z=+3", "#ef4444", "solid"),
+                        (-1, "z=1", "#22c55e", "solid"), (1, "z=+1", "#22c55e", "solid"),
+                        (-2, "z=2", "#eab308", "solid"), (2, "z=+2", "#eab308", "solid"),
+                        (-3, "z=3", "#ef4444", "solid"), (3, "z=+3", "#ef4444", "solid"),
                     ]:
                         fig.add_vline(x=zv, line_dash=dash, line_color=color, line_width=1, opacity=0.6)
                     
@@ -515,11 +555,11 @@ if selected_sub:
                     
                     # X-axis labels
                     fig.update_layout(
-                        title="Distribusi Normal BSK — Deteksi Outlier Z-Score",
+                        title="Distribusi Normal BSK - Deteksi Outlier Z-Score",
                         xaxis=dict(
                             title="Z-Score", range=[-4, 4],
                             tickvals=[-3, -2, -1, 0, 1, 2, 3],
-                            ticktext=["z=−3", "z=−2", "z=−1", "z=0", "z=+1", "z=+2", "z=+3"],
+                            ticktext=["z=3", "z=2", "z=1", "z=0", "z=+1", "z=+2", "z=+3"],
                             gridcolor="#e2e8f0"
                         ),
                         yaxis=dict(title="", showticklabels=False, range=[-0.04, 0.45], gridcolor="#f1f5f9"),
@@ -528,7 +568,7 @@ if selected_sub:
                     )
                     
                     st.plotly_chart(fig, use_container_width=True)
-                    st.caption("◆ = Daerah ini  ·  ● = Daerah lain  ·  🟢 Wajar (|Z|<1)  ·  🟡 Perlu Perhatian (1≤|Z|<2)  ·  🔴 Outlier (|Z|≥2)")
+                    st.caption("* = Daerah ini     = Daerah lain     Wajar (|Z|<1)     Perlu Perhatian (1<=|Z|<2)     Outlier (|Z|>=2)")
                 
         # DIMENSI 3
         st.subheader("Dimensi 3: Kewajaran Kinerja (Analisis Prognosis)")
@@ -536,7 +576,7 @@ if selected_sub:
             d3_score = row.get("dimensi_3_score", pd.NA)
             
             st.markdown(r"""
-            **Metodologi — Goal Setting and Performance Realism (Locke & Latham, 1990):**  
+            **Metodologi - Goal Setting and Performance Realism (Locke & Latham, 1990):**  
             Mengevaluasi realistis atau tidaknya target usulan tahun berjalan berdasarkan prognosis kemampuan teknis historis (efisiensi riil dari tahun-tahun sebelumnya). Deviasi dihitung menggunakan **Log-Normal Goal Realism Function**.
             
             **Formula Log-Normal Goal Realism:**
@@ -565,21 +605,45 @@ if selected_sub:
             if pd.notna(avg_e) and pd.notna(prog_out):
                 r_val = curr_target / prog_out if prog_out > 0 else 0
                 sigma_val = np.log(2.0) / np.sqrt(2 * np.log(2))
+                ln_r = np.log(r_val) if r_val > 0 else 0
+                score_verify = 100 * np.exp(-0.5 * (ln_r / sigma_val) ** 2) if r_val > 0 else 0
+                pagu_val = row.get('pagu', 0)
                 
-                formula_html = (
-                    f"<div style='background:#f8fafc;padding:16px;border-radius:8px;border-left:4px solid #1e3a8a;margin:10px 0;font-family:monospace;font-size:0.9rem;'>"
-                    f"<b>📐 Detail Perhitungan (Goal Realism):</b><br>"
-                    f"1. Target Prognosis (Efisiensi Riil × Pagu) = {avg_e:.10f} × {format_currency(row.get('pagu',0))} = <b>{format_number(prog_out, 4)}</b><br>"
-                    f"2. Rasio Realisme (r) = Target Usulan / Target Prognosis = {format_number(curr_target, 2)} / {format_number(prog_out, 4)} = <b>{r_val:.4f}</b><br>"
-                    f"3. Log-Normal Goal Realism Score:<br>"
-                    f"   Score = 100 × exp(-0.5 × (ln(r) / σ_r)²)<br>"
-                    f"   Score = 100 × exp(-0.5 × ({np.log(r_val) if r_val > 0 else 0:.4f} / {sigma_val:.4f})²) = <b>{format_number(d3_score, 1)}</b>"
-                    f"</div>"
-                )
-                st.markdown(formula_html, unsafe_allow_html=True)
+                st.markdown(f"""
+                <div style='background:linear-gradient(135deg,#f8fafc,#eef2ff);padding:20px;border-radius:12px;border:1px solid #c7d2fe;margin:12px 0;'>
+                <h4 style='color:#1e3a8a;margin:0 0 16px 0;'>[Kalkulasi] Langkah Perhitungan Dimensi 3</h4>
+                
+                <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
+                <b style='color:#1e40af;'>Langkah 1 - Hitung Rata-rata Efisiensi Riil Historis</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Efisiensi Riil = Realisasi Output / Realisasi Anggaran (per tahun historis)</span><br>
+                <code style='font-size:0.95em;'>Rata-rata Efisiensi Riil = <b>{avg_e:.10f}</b></code>
+                </div>
+                
+                <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
+                <b style='color:#1e40af;'>Langkah 2 - Hitung Target Prognosis (Kemampuan Ideal)</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Target Prognosis = Pagu Anggaran x Rata-rata Efisiensi Riil</span><br>
+                <code style='font-size:0.95em;'>Target Prognosis = {format_currency(pagu_val)} x {avg_e:.10f} = <b>{format_number(prog_out, 4)}</b></code>
+                </div>
+                
+                <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #f59e0b;'>
+                <b style='color:#92400e;'>Langkah 3 - Hitung Rasio Realisme (r)</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>r = Target Usulan / Target Prognosis</span><br>
+                <code style='font-size:0.95em;'>r = {format_number(curr_target, 2)} / {format_number(prog_out, 4)} = <b>{r_val:.4f}</b></code><br>
+                <span style='color:#64748b;font-size:0.85em;'>{'r > 1 -> Target ambisius' if r_val > 1 else 'r < 1 -> Target konservatif' if r_val < 1 else 'r = 1 -> Sesuai kemampuan historis'}</span>
+                </div>
+                
+                <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #10b981;'>
+                <b style='color:#065f46;'>Langkah 4 - Hitung Skor Log-Normal Goal Realism</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Score = 100 x exp(-0.5 x (ln(r) / sigma_r)^2), sigma_r = {sigma_val:.4f}</span><br>
+                <code style='font-size:0.95em;'>ln(r) = ln({r_val:.4f}) = <b>{ln_r:.4f}</b></code><br>
+                <code style='font-size:0.95em;'>Score = 100 x exp(-0.5 x ({ln_r:.4f} / {sigma_val:.4f})^2)</code><br>
+                <code style='font-size:1.1em;'><b style='color:#059669;'>Skor Dimensi 3 = {score_verify:.1f}</b></code>
+                </div>
+                </div>
+                """, unsafe_allow_html=True)
                 
                 tier_html = (
-                    "<details style='margin-top:8px;'><summary style='cursor:pointer;color:#1e3a8a;font-weight:bold;font-size:0.85rem;'>📊 Tabel Kalibrasi Skor Target (Goal Realism)</summary>"
+                    "<details style='margin-top:8px;'><summary style='cursor:pointer;color:#1e3a8a;font-weight:bold;font-size:0.85rem;'>[Chart] Tabel Kalibrasi Skor Target (Goal Realism)</summary>"
                     "<table style='width:100%;border-collapse:collapse;font-size:0.85rem;margin-top:8px;'>"
                     "<tr style='background:#f1f5f9;'><th style='padding:8px;text-align:center;border-bottom:1px solid #cbd5e1;'>Rasio Usulan vs Prognosis (r)</th><th style='padding:8px;text-align:center;border-bottom:1px solid #cbd5e1;'>Skor</th><th style='padding:8px;text-align:left;border-bottom:1px solid #cbd5e1;'>Interpretasi</th></tr>"
                     "<tr style='background:#f0fdf4;'><td style='padding:6px 8px;text-align:center;'>1.0 (Sesuai Prognosis)</td><td style='padding:6px 8px;text-align:center;font-weight:bold;'>100.0</td><td style='padding:6px 8px;color:#22c55e;'>Sangat Wajar & Realistis</td></tr>"
@@ -596,7 +660,7 @@ if selected_sub:
                 )
                 st.markdown(tier_html, unsafe_allow_html=True)
             else:
-                st.caption("ℹ️ Tidak ada data realisasi historis. Dimensi ini tidak berkontribusi terhadap IKP (Dynamic Weighting).")
+                st.caption("[Info] Tidak ada data realisasi historis. Dimensi ini tidak berkontribusi terhadap IKP (Dynamic Weighting).")
 
             st.markdown(f"##### Analisis Prognosis {row.get('tahun', '')} (note: hanya fokus pada angka realisasinya saja)")
             # Fetch historical realization data
@@ -638,7 +702,7 @@ if selected_sub:
             d4_score = row.get("dimensi_4_score", pd.NA)
             
             st.markdown(r"""
-            **Metodologi — Predictability & Budget Control (PEFA Framework - PI-16):**  
+            **Metodologi - Predictability & Budget Control (PEFA Framework - PI-16):**  
             Mengevaluasi tingkat konsistensi dan disiplin perencanaan anggaran antara dokumen RKPD, PPAS, dan APBD. Deviasi (discrepancy) dihitung menggunakan **Mean Absolute Planning Discrepancy (MAPD)** dan dikonversi menggunakan **Gaussian Decay Function**.
             
             **Formula Gaussian Consistency Score:**
@@ -650,14 +714,50 @@ if selected_sub:
             """)
             
             c1, c2 = st.columns([3, 1])
-            c1.warning("ℹ️ Data perencanaan dari sistem SIPD-RI (RKPD & PPAS) belum diintegrasikan ke basis data utama. Dimensi ini **tidak diperhitungkan** dalam kalkulasi IKP saat ini (Dynamic Weighting).")
+            c1.warning("[Info] Data perencanaan dari sistem SIPD-RI (RKPD & PPAS) belum diintegrasikan ke basis data utama. Dimensi ini **tidak diperhitungkan** dalam kalkulasi IKP saat ini (Dynamic Weighting).")
             if pd.notna(d4_score):
                 c2.metric("Skor Dimensi 4", f"{d4_score:.1f} / 100")
             else:
-                c2.metric("Skor Dimensi 4", "N/A")
+                c2.metric("Skor Dimensi 4", "Tidak Ada Data")
+            
+            rkpd_val = row.get("rkpd", pd.NA)
+            ppas_val = row.get("ppas", pd.NA)
+            apbd_val = row.get("pagu", pd.NA)
+            
+            if pd.notna(d4_score) and pd.notna(rkpd_val) and pd.notna(ppas_val) and pd.notna(apbd_val):
+                sigma_val = 0.15 / np.sqrt(2 * np.log(2))
+                discrepancy = (abs(apbd_val - rkpd_val) + abs(apbd_val - ppas_val)) / apbd_val if apbd_val > 0 else 0
+                score_verify = 100 * np.exp(-0.5 * (discrepancy / sigma_val) ** 2)
+                
+                st.markdown(f"""
+                <div style='background:linear-gradient(135deg,#f8fafc,#eef2ff);padding:20px;border-radius:12px;border:1px solid #c7d2fe;margin:12px 0;'>
+                <h4 style='color:#1e3a8a;margin:0 0 16px 0;'>[Kalkulasi] Langkah Perhitungan Dimensi 4</h4>
+                
+                <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
+                <b style='color:#1e40af;'>Langkah 1 - Ambil Data Perencanaan</b><br>
+                <code style='font-size:0.95em;'>Pagu RKPD = <b>{format_currency(rkpd_val)}</b></code><br>
+                <code style='font-size:0.95em;'>Pagu PPAS = <b>{format_currency(ppas_val)}</b></code><br>
+                <code style='font-size:0.95em;'>Pagu APBD = <b>{format_currency(apbd_val)}</b></code>
+                </div>
+                
+                <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #f59e0b;'>
+                <b style='color:#92400e;'>Langkah 2 - Hitung Planning Discrepancy (x)</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>x = (|APBD - RKPD| + |APBD - PPAS|) / APBD</span><br>
+                <code style='font-size:0.95em;'>x = (|{format_currency(apbd_val)} - {format_currency(rkpd_val)}| + |{format_currency(apbd_val)} - {format_currency(ppas_val)}|) / {format_currency(apbd_val)}</code><br>
+                <code style='font-size:0.95em;'>x = <b>{discrepancy:.4f}</b> ({discrepancy*100:.1f}%)</code>
+                </div>
+                
+                <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #10b981;'>
+                <b style='color:#065f46;'>Langkah 3 - Hitung Skor Gaussian Consistency</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Score = 100 x exp(-0.5 x (x / sigma_c)^2), sigma_c = {sigma_val:.4f}</span><br>
+                <code style='font-size:0.95em;'>Score = 100 x exp(-0.5 x ({discrepancy:.4f} / {sigma_val:.4f})^2)</code><br>
+                <code style='font-size:1.1em;'><b style='color:#059669;'>Skor Dimensi 4 = {score_verify:.1f}</b></code>
+                </div>
+                </div>
+                """, unsafe_allow_html=True)
                 
             tier_html = (
-                "<details style='margin-top:8px;'><summary style='cursor:pointer;color:#1e3a8a;font-weight:bold;font-size:0.85rem;'>📊 Tabel Kalibrasi Konsistensi Perencanaan (PEFA PI-16)</summary>"
+                "<details style='margin-top:8px;'><summary style='cursor:pointer;color:#1e3a8a;font-weight:bold;font-size:0.85rem;'>[Chart] Tabel Kalibrasi Konsistensi Perencanaan (PEFA PI-16)</summary>"
                 "<table style='width:100%;border-collapse:collapse;font-size:0.85rem;margin-top:8px;'>"
                 "<tr style='background:#f1f5f9;'><th style='padding:8px;text-align:center;border-bottom:1px solid #cbd5e1;'>Planning Discrepancy (x)</th><th style='padding:8px;text-align:center;border-bottom:1px solid #cbd5e1;'>Skor</th><th style='padding:8px;text-align:left;border-bottom:1px solid #cbd5e1;'>Kategori / PEFA Grade</th></tr>"
                 "<tr style='background:#f0fdf4;'><td style='padding:6px 8px;text-align:center;'>0% (Sempurna)</td><td style='padding:6px 8px;text-align:center;font-weight:bold;'>100.0</td><td style='padding:6px 8px;color:#22c55e;'>Sangat Konsisten (Grade A)</td></tr>"
@@ -680,13 +780,13 @@ if selected_sub:
             is_anomali = row.get("is_anomali", False)
             
             st.markdown(r"""
-            **Metodologi — Gaussian Decay Scoring (Tukey, 1977; Iglewicz & Hoaglin, 1993):**  
+            **Metodologi - Gaussian Decay Scoring (Tukey, 1977; Iglewicz & Hoaglin, 1993):**  
             Mendeteksi anomali Biaya Satuan Kinerja (BSK) menggunakan **IQR Fence Distance** terhadap seluruh data dengan nomenklatur yang sama, lalu mengkonversi jarak tersebut ke skor kontinu menggunakan **Gaussian Decay Function**.
             
-            **Langkah 1 — IQR Fence Distance ($d$):**
+            **Langkah 1 - IQR Fence Distance ($d$):**
             $$d = \begin{cases} 0 & \text{jika } Q1 \le BSK \le Q3 \\ \frac{Q1 - BSK}{IQR} & \text{jika } BSK < Q1 \\ \frac{BSK - Q3}{IQR} & \text{jika } BSK > Q3 \end{cases}$$
             
-            **Langkah 2 — Gaussian Decay Score:**
+            **Langkah 2 - Gaussian Decay Score:**
             $$\text{Score} = 100 \times \exp\left(-\frac{1}{2}\left(\frac{d}{\sigma}\right)^2\right), \quad \sigma = \frac{1{,}5}{\sqrt{2 \ln 2}} \approx 1{,}274$$
             
             Kalibrasi $\sigma$ dipilih agar skor **tepat 50** di Tukey Inner Fence ($d = 1{,}5$).
@@ -704,9 +804,9 @@ if selected_sub:
             c3.metric("IQR Distance (d)", f"{d_val:.4f}" if pd.notna(d_val) else "-")
             
             if is_anomali:
-                c4.metric("Status", "⚠️ ANOMALI", delta=f"d ≥ 1.5", delta_color="inverse")
+                c4.metric("Status", "[Warning] ANOMALI", delta=f"d >= 1.5", delta_color="inverse")
             else:
-                c4.metric("Status", "✅ WAJAR", delta=f"d < 1.5")
+                c4.metric("Status", "[OK] WAJAR", delta=f"d < 1.5")
                 
             st.markdown(f"**Skor Dimensi 5:** {format_number(d5_score, 1)} / 100")
             
@@ -740,68 +840,82 @@ if selected_sub:
                 
                 # Status berdasarkan fence distance
                 if current_d >= 3.0:
-                    status_label = '<b style="color:#7f1d1d;">ANOMALI EKSTREM (d ≥ 3.0, di luar outer fence)</b>'
+                    status_label = '<b style="color:#7f1d1d;">ANOMALI EKSTREM (d >= 3.0, di luar outer fence)</b>'
                 elif current_d >= 1.5:
-                    status_label = '<b style="color:#ef4444;">ANOMALI (d ≥ 1.5, di luar inner fence)</b>'
+                    status_label = '<b style="color:#ef4444;">ANOMALI (d >= 1.5, di luar inner fence)</b>'
                 elif current_d >= 1.0:
-                    status_label = '<b style="color:#f59e0b;">PERLU PERHATIAN (1.0 ≤ d < 1.5)</b>'
+                    status_label = '<b style="color:#f59e0b;">PERLU PERHATIAN (1.0 <= d < 1.5)</b>'
                 else:
                     status_label = '<b style="color:#22c55e;">DALAM BATAS WAJAR (d < 1.0)</b>'
                 
                 # Sigma value
                 sigma_val = 1.5 / np.sqrt(2 * np.log(2))
+                score_verify = 100 * np.exp(-0.5 * (current_d / sigma_val) ** 2)
                 
-                formula_html = (
-                    f"<div style='background:#f8fafc;padding:16px;border-radius:8px;border-left:4px solid #1e3a8a;margin:10px 0;font-family:monospace;font-size:0.9rem;'>"
-                    f"<b>📐 Distribusi Kuartil (N={n_data} data seluruh pemda & tahun):</b><br>"
-                    f"<ul style='margin-top:4px; margin-bottom:12px; padding-left:20px;'>"
-                    f"<li><b>Q1 (Kuartil 1 / 25%)</b> = {format_currency(q1_v)}</li>"
-                    f"<li><b>Q2 (Median / 50%)</b> = {format_currency(q2_v)}</li>"
-                    f"<li><b>Q3 (Kuartil 3 / 75%)</b> = {format_currency(q3_v)}</li>"
-                    f"<li><b>Q4 (Maksimum)</b> = {format_currency(q4_v)}</li>"
-                    f"</ul>"
-                    f"<b>📐 Langkah 1 — IQR & Fence Distance:</b><br>"
-                    f"IQR = Q3 - Q1 = {format_currency(q3_v)} - {format_currency(q1_v)} = <b>{format_currency(iqr_val)}</b><br>"
-                    f"Batas Bawah (Inner Fence) = Q1 - 1.5×IQR = {format_currency(lb_v)}<br>"
-                    f"Batas Atas (Inner Fence) = Q3 + 1.5×IQR = {format_currency(ub_v)}<br><br>"
-                    f"BSK Daerah Ini = <b>{format_currency(current_bsk)}</b><br>"
-                )
-                
-                # Show distance calculation
+                # Distance calc text
                 if current_bsk < q1_v:
-                    formula_html += f"d = (Q1 - BSK) / IQR = ({format_currency(q1_v)} - {format_currency(current_bsk)}) / {format_currency(iqr_val)} = <b>{current_d:.4f}</b><br>"
+                    d_calc = f"d = (Q1 - BSK) / IQR = ({format_currency(q1_v)} - {format_currency(current_bsk)}) / {format_currency(iqr_val)} = <b>{current_d:.4f}</b>"
+                    d_explain = "BSK di bawah Q1"
                 elif current_bsk > q3_v:
-                    formula_html += f"d = (BSK - Q3) / IQR = ({format_currency(current_bsk)} - {format_currency(q3_v)}) / {format_currency(iqr_val)} = <b>{current_d:.4f}</b><br>"
+                    d_calc = f"d = (BSK - Q3) / IQR = ({format_currency(current_bsk)} - {format_currency(q3_v)}) / {format_currency(iqr_val)} = <b>{current_d:.4f}</b>"
+                    d_explain = "BSK di atas Q3"
                 else:
-                    formula_html += f"d = 0 <i>(BSK berada dalam kotak IQR [Q1, Q3])</i><br>"
+                    d_calc = "d = <b>0.0000</b>"
+                    d_explain = "BSK dalam kotak IQR [Q1, Q3]"
                 
-                formula_html += (
-                    f"<br><b>📐 Langkah 2 — Gaussian Decay Score:</b><br>"
-                    f"Score = 100 × exp(-0.5 × (d / σ)²)<br>"
-                    f"Score = 100 × exp(-0.5 × ({current_d:.4f} / {sigma_val:.4f})²) = <b>{format_number(d5_score, 1)}</b><br><br>"
-                    f"Status: {status_label}"
-                    f"</div>"
-                )
-                st.markdown(formula_html, unsafe_allow_html=True)
+                dim5_html = f"""
+                <div style='background:linear-gradient(135deg,#f8fafc,#eef2ff);padding:20px;border-radius:12px;border:1px solid #c7d2fe;margin:12px 0;'>
+                <h4 style='color:#1e3a8a;margin:0 0 16px 0;'>[Kalkulasi] Langkah Perhitungan Dimensi 5</h4>
+                
+                <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
+                <b style='color:#1e40af;'>Langkah 1 - Hitung Distribusi Kuartil (N={n_data} data)</b><br>
+                <code>Q1 (25%) = <b>{format_currency(q1_v)}</b></code><br>
+                <code>Q2 (Median) = <b>{format_currency(q2_v)}</b></code><br>
+                <code>Q3 (75%) = <b>{format_currency(q3_v)}</b></code><br>
+                <code>IQR = Q3 - Q1 = {format_currency(q3_v)} - {format_currency(q1_v)} = <b>{format_currency(iqr_val)}</b></code>
+                </div>
+                
+                <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
+                <b style='color:#1e40af;'>Langkah 2 - Hitung Batas Pagar (Fence)</b><br>
+                <code>Batas Bawah = Q1 - 1.5 x IQR = <b>{format_currency(lb_v)}</b></code><br>
+                <code>Batas Atas = Q3 + 1.5 x IQR = <b>{format_currency(ub_v)}</b></code>
+                </div>
+                
+                <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #f59e0b;'>
+                <b style='color:#92400e;'>Langkah 3 - Hitung IQR Fence Distance (d)</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>BSK Daerah Ini = {format_currency(current_bsk)} -> {d_explain}</span><br>
+                <code>{d_calc}</code>
+                </div>
+                
+                <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #10b981;'>
+                <b style='color:#065f46;'>Langkah 4 - Hitung Skor Gaussian Decay</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Score = 100 x exp(-0.5 x (d / sigma)^2), sigma = {sigma_val:.4f}</span><br>
+                <code>Score = 100 x exp(-0.5 x ({current_d:.4f} / {sigma_val:.4f})^2)</code><br>
+                <code style='font-size:1.1em;'><b style='color:#059669;'>Skor Dimensi 5 = {score_verify:.1f}</b></code><br><br>
+                Status: {status_label}
+                </div>
+                </div>
+                """
+                st.markdown(dim5_html, unsafe_allow_html=True)
                 
                 # Tabel referensi skor
                 tier_html = (
-                    "<details style='margin-top:8px;'><summary style='cursor:pointer;color:#1e3a8a;font-weight:bold;font-size:0.85rem;'>📊 Tabel Kalibrasi Skor (Gaussian Decay)</summary>"
+                    "<details style='margin-top:8px;'><summary style='cursor:pointer;color:#1e3a8a;font-weight:bold;font-size:0.85rem;'>[Chart] Tabel Kalibrasi Skor (Gaussian Decay)</summary>"
                     "<table style='width:100%;border-collapse:collapse;font-size:0.85rem;margin-top:8px;'>"
                     "<tr style='background:#f1f5f9;'><th style='padding:8px;text-align:center;border-bottom:1px solid #cbd5e1;'>Fence Distance (d)</th><th style='padding:8px;text-align:center;border-bottom:1px solid #cbd5e1;'>Skor</th><th style='padding:8px;text-align:left;border-bottom:1px solid #cbd5e1;'>Interpretasi</th></tr>"
                     "<tr style='background:#f0fdf4;'><td style='padding:6px 8px;text-align:center;'>0.0 (dalam IQR)</td><td style='padding:6px 8px;text-align:center;font-weight:bold;'>100.0</td><td style='padding:6px 8px;color:#22c55e;'>Sangat Wajar</td></tr>"
                     "<tr><td style='padding:6px 8px;text-align:center;'>0.5</td><td style='padding:6px 8px;text-align:center;'>92.6</td><td style='padding:6px 8px;color:#22c55e;'>Wajar</td></tr>"
                     "<tr><td style='padding:6px 8px;text-align:center;'>1.0</td><td style='padding:6px 8px;text-align:center;'>73.4</td><td style='padding:6px 8px;color:#eab308;'>Perlu Perhatian</td></tr>"
-                    "<tr style='background:#fef2f2;'><td style='padding:6px 8px;text-align:center;font-weight:bold;'>1.5 (Inner Fence)</td><td style='padding:6px 8px;text-align:center;font-weight:bold;'>50.0</td><td style='padding:6px 8px;color:#ef4444;font-weight:bold;'>Tukey Inner Fence — Batas Anomali</td></tr>"
+                    "<tr style='background:#fef2f2;'><td style='padding:6px 8px;text-align:center;font-weight:bold;'>1.5 (Inner Fence)</td><td style='padding:6px 8px;text-align:center;font-weight:bold;'>50.0</td><td style='padding:6px 8px;color:#ef4444;font-weight:bold;'>Tukey Inner Fence - Batas Anomali</td></tr>"
                     "<tr><td style='padding:6px 8px;text-align:center;'>2.0</td><td style='padding:6px 8px;text-align:center;'>29.2</td><td style='padding:6px 8px;color:#ef4444;'>Anomali Signifikan</td></tr>"
                     "<tr><td style='padding:6px 8px;text-align:center;'>2.5</td><td style='padding:6px 8px;text-align:center;'>14.6</td><td style='padding:6px 8px;color:#7f1d1d;'>Anomali Berat</td></tr>"
-                    "<tr style='background:#fef2f2;'><td style='padding:6px 8px;text-align:center;font-weight:bold;'>3.0 (Outer Fence)</td><td style='padding:6px 8px;text-align:center;font-weight:bold;'>6.3</td><td style='padding:6px 8px;color:#7f1d1d;font-weight:bold;'>Tukey Outer Fence — Anomali Ekstrem</td></tr>"
+                    "<tr style='background:#fef2f2;'><td style='padding:6px 8px;text-align:center;font-weight:bold;'>3.0 (Outer Fence)</td><td style='padding:6px 8px;text-align:center;font-weight:bold;'>6.3</td><td style='padding:6px 8px;color:#7f1d1d;font-weight:bold;'>Tukey Outer Fence - Anomali Ekstrem</td></tr>"
                     "</table>"
                     "<div style='margin-top:8px;font-size:0.8rem;color:#64748b;'>"
                     "<b>Referensi:</b><br>"
-                    "• Tukey, J.W. (1977). <i>Exploratory Data Analysis</i>. Addison-Wesley.<br>"
-                    "• Iglewicz, B. & Hoaglin, D.C. (1993). <i>How to Detect and Handle Outliers</i>. ASQC Quality Press.<br>"
-                    "• Hubert, M. & Vandervieren, E. (2008). An Adjusted Boxplot for Skewed Distributions. <i>Comp. Stat. & Data Analysis</i>, 52(12)."
+                    " Tukey, J.W. (1977). <i>Exploratory Data Analysis</i>. Addison-Wesley.<br>"
+                    " Iglewicz, B. & Hoaglin, D.C. (1993). <i>How to Detect and Handle Outliers</i>. ASQC Quality Press.<br>"
+                    " Hubert, M. & Vandervieren, E. (2008). An Adjusted Boxplot for Skewed Distributions. <i>Comp. Stat. & Data Analysis</i>, 52(12)."
                     "</div>"
                     "</details>"
                 )
@@ -810,7 +924,7 @@ if selected_sub:
             if len(universal_df) >= 3:
                 import plotly.graph_objects as go
                 
-                st.markdown("##### Visualisasi Box Plot — Deteksi Anomali IQR")
+                st.markdown("##### Visualisasi Box Plot - Deteksi Anomali IQR")
                 
                 bsk_vals = universal_df["bsk"].values
                 q1_v = np.percentile(bsk_vals, 25)
@@ -846,7 +960,7 @@ if selected_sub:
                     marker=dict(size=20, color=hl_color, symbol="diamond",
                                 line=dict(width=3, color="white")),
                     name=f"{row['pemda_label']}",
-                    hovertemplate=f"<b>{row['pemda_label']}</b><br>BSK: {format_currency(current_bsk)}<br>{'🚨 ANOMALI' if is_outlier_cur else '✅ NORMAL'}<extra></extra>",
+                    hovertemplate=f"<b>{row['pemda_label']}</b><br>BSK: {format_currency(current_bsk)}<br>{'[!] ANOMALI' if is_outlier_cur else '[OK] NORMAL'}<extra></extra>",
                     showlegend=True
                 ))
                 
@@ -862,7 +976,7 @@ if selected_sub:
                     showarrow=False, font=dict(size=9, color="#f97316"))
                 
                 fig.update_layout(
-                    title="Distribusi BSK — Seluruh Pemda & Tahun",
+                    title="Distribusi BSK - Seluruh Pemda & Tahun",
                     xaxis_title="Biaya Satuan Kinerja (BSK)",
                     plot_bgcolor="white",
                     height=280,
@@ -873,7 +987,7 @@ if selected_sub:
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
-                st.caption("◆ = Data yang sedang diuji  ·  Titik abu-abu = Data pembanding  ·  Garis oranye = Batas IQR")
+                st.caption("* = Data yang sedang diuji    Titik abu-abu = Data pembanding    Garis oranye = Batas IQR")
                 
                 # Tabel komparasi
                 st.markdown("##### Tabel Komparasi Universal")
@@ -882,8 +996,8 @@ if selected_sub:
                 display_univ["is_outlier"] = (display_univ["bsk"] < lb_v) | (display_univ["bsk"] > ub_v)
                 is_self_mask = (display_univ["pemda_label"] == row["pemda_label"]) & (display_univ["tahun"] == row["tahun"])
                 
-                display_univ["status"] = display_univ["is_outlier"].apply(lambda x: "🚨 Anomali" if x else "✅ Normal")
-                display_univ.loc[is_self_mask, "pemda_label"] = display_univ.loc[is_self_mask, "pemda_label"] + " ← INI"
+                display_univ["status"] = display_univ["is_outlier"].apply(lambda x: "[!] Anomali" if x else "[OK] Normal")
+                display_univ.loc[is_self_mask, "pemda_label"] = display_univ.loc[is_self_mask, "pemda_label"] + " <- INI"
                 
                 display_univ["pagu"] = display_univ["pagu"].apply(format_currency)
                 display_univ["bsk"] = display_univ["bsk"].apply(format_currency)

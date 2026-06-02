@@ -1,5 +1,5 @@
 """
-IKP Calculator – Menggabungkan skor dari 5 dimensi.
+IKP Calculator - Menggabungkan skor dari 5 dimensi.
 Transparent: menyimpan detail kalkulasi di tiap baris untuk audit trail.
 """
 import pandas as pd
@@ -28,7 +28,7 @@ def calculate_ikp(df: pd.DataFrame) -> pd.DataFrame:
     Menghitung Indeks Kewajaran Penganggaran (IKP).
     Dynamic Weighting: hanya dimensi yang memiliki data valid yang diperhitungkan.
     Bobot di-redistribusi secara proporsional ke dimensi yang tersedia.
-    Fully vectorized — no row-by-row loops.
+    Fully vectorized - no row-by-row loops.
     """
     if df.empty:
         return df

@@ -1,5 +1,5 @@
 """
-UI Helpers – Fungsi pendukung antarmuka Streamlit.
+UI Helpers - Fungsi pendukung antarmuka Streamlit.
 """
 import os
 import streamlit as st
@@ -73,7 +73,7 @@ def render_header():
         img_b64 = get_base64_of_bin_file(logo_path)
         img_tag = f'<img src="data:image/png;base64,{img_b64}" style="width: 55px; height: 55px; object-fit: contain; margin-right: 15px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">'
     else:
-        img_tag = '<div style="background-color: #1e3a8a; color: white; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 24px; font-weight: bold; margin-right: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">🇮🇩</div>'
+        img_tag = '<div style="background-color: #1e3a8a; color: white; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 24px; font-weight: bold; margin-right: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></div>'
         
     st.markdown(
         f"""
@@ -81,7 +81,7 @@ def render_header():
             {img_tag}
             <div>
                 <h2 style="margin: 0 !important; color: #0f172a !important; font-size: 1.4rem !important; font-weight: 700; letter-spacing: -0.01em;">PLATFORM KEWAJARAN PENGANGGARAN</h2>
-                <p style="margin: 0 !important; color: #3b82f6 !important; font-size: 0.9rem !important; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Pusat Data dan Informasi • Kementerian Dalam Negeri</p>
+                <p style="margin: 0 !important; color: #3b82f6 !important; font-size: 0.9rem !important; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Pusat Data dan Informasi  Kementerian Dalam Negeri</p>
             </div>
         </div>
         """,

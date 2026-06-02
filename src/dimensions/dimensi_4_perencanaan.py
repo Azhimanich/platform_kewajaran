@@ -1,14 +1,14 @@
 """
-Dimensi 4 – Kewajaran Perencanaan (Consistency).
+Dimensi 4 - Kewajaran Perencanaan (Consistency).
 Mengevaluasi konsistensi perencanaan antara dokumen RKPD, PPAS, dan APBD.
-Data belum tersedia dari SIPD-RI — skor = NaN (tidak dinilai).
+Data belum tersedia dari SIPD-RI - skor = NaN (tidak dinilai).
 """
 import pandas as pd
 import numpy as np
 
 def calculate(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Kalkulasi Dimensi 4 — Kewajaran Perencanaan (Consistency APBD-RKPD-PPAS).
+    Kalkulasi Dimensi 4 - Kewajaran Perencanaan (Consistency APBD-RKPD-PPAS).
     Menggunakan standard framework PEFA (Public Expenditure and Financial Accountability) PI-16.
     
     Formula Discrepancy (x):
@@ -17,7 +17,7 @@ def calculate(df: pd.DataFrame) -> pd.DataFrame:
     Gaussian Decay Score:
       Score = 100 * exp(-0.5 * (x / sigma_c)^2)
       di mana sigma_c dikalibrasi agar deviasi 15% (PEFA Grade C threshold) menghasilkan skor 50.0.
-      sigma_c = 0.15 / sqrt(2 * ln(2)) ≈ 0.1274
+      sigma_c = 0.15 / sqrt(2 * ln(2))  0.1274
     """
     if df.empty:
         return df

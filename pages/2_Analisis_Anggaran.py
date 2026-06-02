@@ -9,7 +9,7 @@ inject_css()
 render_sidebar()
 render_header()
 
-st.title("🔍 Analisis Anggaran")
+st.title(" Analisis Anggaran")
 
 df = get_processed_data()
 
@@ -98,7 +98,7 @@ if not filtered_df.empty:
         display_df[f"D-{i}"] = display_subset[col].apply(lambda x: f"{x:.1f}" if pd.notna(x) else "-")
     display_df["IKP"] = display_subset["ikp_score"]
 
-    styled = display_df.style.map(get_ikp_color, subset=["IKP"]).format({"IKP": lambda x: f"{x:.1f}" if pd.notna(x) else "-"}).hide(axis="index")
+    styled = getattr(display_df.style, "map", getattr(display_df.style, "applymap", None))(get_ikp_color, subset=["IKP"]).format({"IKP": lambda x: f"{x:.1f}" if pd.notna(x) else "-"}).hide(axis="index")
 
     # CSS kustom untuk tabel profesional
     table_design_css = """
