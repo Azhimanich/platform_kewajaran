@@ -259,6 +259,7 @@ if selected_sub:
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #10b981;'>
                 <b style='color:#065f46;'>Langkah 4 - Penilaian Skor (Sistem Penalti Lengkung/Gaussian)</b><br>
                 <span style='color:#64748b;font-size:0.85em;'>Jika persentase perubahan 0%, maka skor 100. Semakin besar perubahannya ({change_abs*100:.1f}%), sistem penalti matematis (Gaussian) akan semakin memotong skornya secara melengkung ke bawah. Batas toleransi wajar (sigma) ditetapkan di kisaran {sigma_val*100:.1f}%.</span><br>
+                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Kalkulasi: 100 x exp(-0.5 x ({change_abs:.4f} / {sigma_val:.4f})^2)</code><br>
                 <code style='font-size:1.1em;'><b style='color:#059669;'>Hasil Akhir -> Skor Dimensi 1 = {score_verify:.1f} dari 100</b></code>
                 </div>
                 </div>
@@ -366,8 +367,8 @@ if selected_sub:
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
                 <b style='color:#1e40af;'>Langkah 1 - Kumpulkan Angka dari Daerah Lain (Pembanding)</b><br>
                 <span style='color:#64748b;font-size:0.85em;'>Sistem mengumpulkan nilai BSK dari <b>{int(n_pemb)} daerah lain</b> yang memiliki kegiatan sama, <b>tanpa memasukkan daerah Anda sendiri</b>.</span><br>
-                <span style='color:#64748b;font-size:0.85em;'>Dari data daerah lain tersebut, dicari Nilai Rata-Rata dan seberapa menyebar datanya (Standar Deviasi).</span><br>
-                <code style='font-size:0.95em;'>Rata-rata Regional = <b>{format_currency(med_cpu)}</b></code><br>
+                <span style='color:#64748b;font-size:0.85em;'>Dari data daerah lain tersebut, dicari Nilai Rata-Rata (Total BSK Daerah Lain / Jumlah Daerah) dan seberapa menyebar datanya (Standar Deviasi).</span><br>
+                <code style='font-size:0.95em;'>Rata-rata Regional = Total BSK Daerah Lain / {int(n_pemb)} = <b>{format_currency(med_cpu)}</b></code><br>
                 <code style='font-size:0.95em;'>Standar Deviasi (Penyebaran Data) = <b>{std_display}</b></code>
                 </div>
                 
@@ -382,6 +383,7 @@ if selected_sub:
                 <b style='color:#065f46;'>Langkah 3 - Penilaian Skor (Penalti Asimetris)</b><br>
                 <span style='color:#64748b;font-size:0.85em;'>Sistem memberikan <b>toleransi yang berbeda</b>. Jika daerah Anda jauh lebih mahal/boros (Z positif), skor dipotong lebih drastis. Namun jika daerah Anda jauh lebih murah (Z negatif), skor potongannya lebih kecil.</span><br>
                 <span style='color:#64748b;font-size:0.85em;'>Status daerah Anda: <b>{sigma_label}</b>, sehingga:</span><br>
+                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Kalkulasi: 100 x exp(-0.5 x ({z_score:.4f} / {sigma_actual:.4f})^2)</code><br>
                 <code style='font-size:1.1em;'><b style='color:#059669;'>Hasil Akhir -> Skor Dimensi 2 = {score_verify:.1f} dari 100</b></code>
                 </div>
                 </div>
@@ -614,7 +616,8 @@ if selected_sub:
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
                 <b style='color:#1e40af;'>Langkah 1 - Menghitung Efisiensi Kemampuan Historis</b><br>
                 <span style='color:#64748b;font-size:0.85em;'>Sistem melihat rekam jejak di tahun-tahun sebelumnya. Untuk setiap tahun historis, dihitung seberapa banyak output yang dihasilkan dari setiap rupiah (Realisasi Output / Realisasi Anggaran). Semua hasilnya lalu dirata-ratakan.</span><br>
-                <span style='color:#64748b;font-size:0.85em;'>Artinya, rata-rata untuk setiap Rp. 1 yang dikeluarkan, daerah ini mampu menghasilkan <b>{avg_e:.10f}</b> output.</span>
+                <span style='color:#64748b;font-size:0.85em;'>Artinya, rata-rata untuk setiap Rp. 1 yang dikeluarkan, daerah ini mampu menghasilkan <b>{avg_e:.10f}</b> output.</span><br>
+                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Kalkulasi: Rata-rata dari (Realisasi Output Historis / Realisasi Pagu Historis) per tahun</code>
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
@@ -634,6 +637,8 @@ if selected_sub:
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #10b981;'>
                 <b style='color:#065f46;'>Langkah 4 - Penilaian Skor Kesesuaian</b><br>
                 <span style='color:#64748b;font-size:0.85em;'>Berdasarkan rasio di atas, jika target usulan sangat melenceng (jauh lebih tinggi atau jauh lebih rendah dari target seharusnya), skornya akan dipotong.</span><br>
+                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Kalkulasi ln(r): ln({r_val:.4f}) = {ln_r:.4f}</code><br>
+                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Kalkulasi Skor: 100 x exp(-0.5 x ({ln_r:.4f} / {sigma_val:.4f})^2)</code><br>
                 <code style='font-size:1.1em;'><b style='color:#059669;'>Hasil Akhir -> Skor Dimensi 3 = {score_verify:.1f} dari 100</b></code>
                 </div>
                 </div>
@@ -891,6 +896,8 @@ if selected_sub:
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #10b981;'>
                 <b style='color:#065f46;'>Langkah 4 - Penilaian Skor Kewajaran Ekstrem</b><br>
                 <span style='color:#64748b;font-size:0.85em;'>Jika BSK Anda masih berada di dalam kotak Q1 hingga Q3, skor otomatis Sempurna 100. Semakin jauh Anda melampaui pagar batas aman (menjadi outlier yang ekstrem), nilai skor akan dipotong tajam hingga mendekati 0.</span><br>
+                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Kalkulasi Jarak (d): {d_calc}</code><br>
+                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Kalkulasi Skor: 100 x exp(-0.5 x ({current_d:.4f} / {sigma_val:.4f})^2)</code><br>
                 <code style='font-size:1.1em;'><b style='color:#059669;'>Hasil Akhir -> Skor Dimensi 5 = {score_verify:.1f} dari 100</b></code><br><br>
                 <span style='font-size:0.85em;'>Status Keputusan: <b>{status_label}</b></span>
                 </div>
