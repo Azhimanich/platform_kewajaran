@@ -369,7 +369,8 @@ if selected_sub:
                 <span style='color:#64748b;font-size:0.85em;'>Sistem mengumpulkan nilai BSK dari <b>{int(n_pemb)} daerah lain</b> yang memiliki kegiatan sama, <b>tanpa memasukkan daerah Anda sendiri</b>.</span><br>
                 <span style='color:#64748b;font-size:0.85em;'>Dari data daerah lain tersebut, dicari Nilai Rata-Rata (Total BSK Daerah Lain / Jumlah Daerah) dan seberapa menyebar datanya (Standar Deviasi).</span><br>
                 <code style='font-size:0.95em;'>Rata-rata Regional = Total BSK Daerah Lain / {int(n_pemb)} = <b>{format_currency(med_cpu)}</b></code><br>
-                <code style='font-size:0.95em;'>Standar Deviasi (Penyebaran Data) = <b>{std_display}</b></code>
+                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>*Catatan: Anda bisa melihat rincian daerah lainnya di tabel pembanding di bawah.</code><br>
+                <code style='font-size:0.95em;'>Standar Deviasi (Jarak Rata-rata Penyebaran) = <b>{std_display}</b></code>
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #f59e0b;'>
@@ -617,7 +618,7 @@ if selected_sub:
                 <b style='color:#1e40af;'>Langkah 1 - Menghitung Efisiensi Kemampuan Historis</b><br>
                 <span style='color:#64748b;font-size:0.85em;'>Sistem melihat rekam jejak di tahun-tahun sebelumnya. Untuk setiap tahun historis, dihitung seberapa banyak output yang dihasilkan dari setiap rupiah (Realisasi Output / Realisasi Anggaran). Semua hasilnya lalu dirata-ratakan.</span><br>
                 <span style='color:#64748b;font-size:0.85em;'>Artinya, rata-rata untuk setiap Rp. 1 yang dikeluarkan, daerah ini mampu menghasilkan <b>{avg_e:.10f}</b> output.</span><br>
-                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Kalkulasi: Rata-rata dari (Realisasi Output Historis / Realisasi Pagu Historis) per tahun</code>
+                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Kalkulasi: Menjumlahkan (Realisasi Output / Realisasi Pagu) dari setiap tahun sebelumnya, lalu dibagi jumlah tahun.</code>
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
@@ -743,17 +744,18 @@ if selected_sub:
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #f59e0b;'>
-                <b style='color:#92400e;'>Langkah 2 - Hitung Planning Discrepancy (x)</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>x = (|APBD - RKPD| + |APBD - PPAS|) / APBD</span><br>
-                <code style='font-size:0.95em;'>x = (|{format_currency(apbd_val)} - {format_currency(rkpd_val)}| + |{format_currency(apbd_val)} - {format_currency(ppas_val)}|) / {format_currency(apbd_val)}</code><br>
-                <code style='font-size:0.95em;'>x = <b>{discrepancy:.4f}</b> ({discrepancy*100:.1f}%)</code>
+                <b style='color:#92400e;'>Langkah 2 - Hitung Penyimpangan Perencanaan (Discrepancy)</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Menghitung selisih antara pagu APBD akhir dengan usulan awal (RKPD & PPAS).</span><br>
+                <code style='font-size:0.95em;'>Penyimpangan = (|APBD - RKPD| + |APBD - PPAS|) / APBD</code><br>
+                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Penyimpangan = (|{format_currency(apbd_val)} - {format_currency(rkpd_val)}| + |{format_currency(apbd_val)} - {format_currency(ppas_val)}|) / {format_currency(apbd_val)}</code><br>
+                <code style='font-size:0.95em;'>Hasil Penyimpangan = <b>{discrepancy:.4f}</b> ({discrepancy*100:.1f}%)</code>
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #10b981;'>
-                <b style='color:#065f46;'>Langkah 3 - Hitung Skor Gaussian Consistency</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>Score = 100 x exp(-0.5 x (x / sigma_c)^2), sigma_c = {sigma_val:.4f}</span><br>
-                <code style='font-size:0.95em;'>Score = 100 x exp(-0.5 x ({discrepancy:.4f} / {sigma_val:.4f})^2)</code><br>
-                <code style='font-size:1.1em;'><b style='color:#059669;'>Skor Dimensi 4 = {score_verify:.1f}</b></code>
+                <b style='color:#065f46;'>Langkah 3 - Penilaian Skor Kesesuaian Perencanaan</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Semakin besar penyimpangan (perubahan mendadak pada anggaran di ujung waktu), semakin besar penalti pemotongan skor secara melengkung ke bawah.</span><br>
+                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Kalkulasi Skor = 100 x exp(-0.5 x ({discrepancy:.4f} / {sigma_val:.4f})^2)</code><br>
+                <code style='font-size:1.1em;'><b style='color:#059669;'>Hasil Akhir -> Skor Dimensi 4 = {score_verify:.1f} dari 100</b></code>
                 </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -883,8 +885,11 @@ if selected_sub:
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
                 <b style='color:#1e40af;'>Langkah 2 - Tentukan Pagar Batas Aman</b><br>
                 <span style='color:#64748b;font-size:0.85em;'>Sistem menghitung batas harga yang dianggap sangat murah tidak wajar (Batas Bawah) dan sangat mahal tidak wajar (Batas Atas). Angka apapun di luar pagar ini disebut Anomali Ekstrem.</span><br>
-                <code style='font-size:0.95em;'>Batas Bawah Aman = <b>{format_currency(lb_v)}</b></code><br>
-                <code style='font-size:0.95em;'>Batas Atas Aman = <b>{format_currency(ub_v)}</b></code>
+                <code style='font-size:0.95em;'>Batas Bawah Aman = Q1 - (1.5 x IQR)</code><br>
+                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Batas Bawah = {format_currency(q1_v)} - (1.5 x {format_currency(iqr_val)}) = <b>{format_currency(lb_v)}</b></code><br>
+                <br>
+                <code style='font-size:0.95em;'>Batas Atas Aman = Q3 + (1.5 x IQR)</code><br>
+                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Batas Atas = {format_currency(q3_v)} + (1.5 x {format_currency(iqr_val)}) = <b>{format_currency(ub_v)}</b></code>
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #f59e0b;'>
