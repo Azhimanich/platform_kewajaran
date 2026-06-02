@@ -257,10 +257,9 @@ if selected_sub:
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #10b981;'>
-                <b style='color:#065f46;'>Langkah 4 - Hitung Skor Gaussian Decay</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>Score = 100 x exp(-0.5 x (|x| / sigma)^2), sigma = {sigma_val:.4f}</span><br>
-                <code style='font-size:0.95em;'>Score = 100 x exp(-0.5 x ({change_abs:.4f} / {sigma_val:.4f})^2)</code><br>
-                <code style='font-size:1.1em;'><b style='color:#059669;'>Skor Dimensi 1 = {score_verify:.1f}</b></code>
+                <b style='color:#065f46;'>Langkah 4 - Penilaian Skor (Sistem Penalti Lengkung/Gaussian)</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Jika persentase perubahan 0%, maka skor 100. Semakin besar perubahannya ({change_abs*100:.1f}%), sistem penalti matematis (Gaussian) akan semakin memotong skornya secara melengkung ke bawah. Batas toleransi wajar (sigma) ditetapkan di kisaran {sigma_val*100:.1f}%.</span><br>
+                <code style='font-size:1.1em;'><b style='color:#059669;'>Hasil Akhir -> Skor Dimensi 1 = {score_verify:.1f} dari 100</b></code>
                 </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -365,10 +364,11 @@ if selected_sub:
                 <h4 style='color:#1e3a8a;margin:0 0 16px 0;'>[Kalkulasi] Langkah Perhitungan Dimensi 2</h4>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
-                <b style='color:#1e40af;'>Langkah 1 - Hitung Rata-rata & Std. Deviasi Regional (Leave-One-Out)</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>Dihitung dari {int(n_pemb)} daerah lain (tanpa daerah ini)</span><br>
-                <code style='font-size:0.95em;'>mean (Rata-rata Regional) = <b>{format_currency(med_cpu)}</b></code><br>
-                <code style='font-size:0.95em;'>sigma (Std. Deviasi Regional) = <b>{std_display}</b></code>
+                <b style='color:#1e40af;'>Langkah 1 - Kumpulkan Angka dari Daerah Lain (Pembanding)</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Sistem mengumpulkan nilai BSK dari <b>{int(n_pemb)} daerah lain</b> yang memiliki kegiatan sama, <b>tanpa memasukkan daerah Anda sendiri</b>.</span><br>
+                <span style='color:#64748b;font-size:0.85em;'>Dari data daerah lain tersebut, dicari Nilai Rata-Rata dan seberapa menyebar datanya (Standar Deviasi).</span><br>
+                <code style='font-size:0.95em;'>Rata-rata Regional = <b>{format_currency(med_cpu)}</b></code><br>
+                <code style='font-size:0.95em;'>Standar Deviasi (Penyebaran Data) = <b>{std_display}</b></code>
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #f59e0b;'>
@@ -379,12 +379,10 @@ if selected_sub:
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #10b981;'>
-                <b style='color:#065f46;'>Langkah 3 - Hitung Skor Asymmetric Gaussian Decay</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>Penalti asimetris: over-budgeting lebih berat dari under-budgeting</span><br>
-                <code style='font-size:0.95em;'>sigma_z terpilih = <b>{sigma_actual:.4f}</b> ({sigma_label})</code><br>
-                <code style='font-size:0.95em;'>Score = 100 x exp(-0.5 x (Z / sigma_z)^2)</code><br>
-                <code style='font-size:0.95em;'>Score = 100 x exp(-0.5 x ({z_score:.4f} / {sigma_actual:.4f})^2)</code><br>
-                <code style='font-size:1.1em;'><b style='color:#059669;'>Skor Dimensi 2 = {score_verify:.1f}</b></code>
+                <b style='color:#065f46;'>Langkah 3 - Penilaian Skor (Penalti Asimetris)</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Sistem memberikan <b>toleransi yang berbeda</b>. Jika daerah Anda jauh lebih mahal/boros (Z positif), skor dipotong lebih drastis. Namun jika daerah Anda jauh lebih murah (Z negatif), skor potongannya lebih kecil.</span><br>
+                <span style='color:#64748b;font-size:0.85em;'>Status daerah Anda: <b>{sigma_label}</b>, sehingga:</span><br>
+                <code style='font-size:1.1em;'><b style='color:#059669;'>Hasil Akhir -> Skor Dimensi 2 = {score_verify:.1f} dari 100</b></code>
                 </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -614,30 +612,29 @@ if selected_sub:
                 <h4 style='color:#1e3a8a;margin:0 0 16px 0;'>[Kalkulasi] Langkah Perhitungan Dimensi 3</h4>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
-                <b style='color:#1e40af;'>Langkah 1 - Hitung Rata-rata Efisiensi Riil Historis</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>Efisiensi Riil = Realisasi Output / Realisasi Anggaran (per tahun historis)</span><br>
-                <code style='font-size:0.95em;'>Rata-rata Efisiensi Riil = <b>{avg_e:.10f}</b></code>
+                <b style='color:#1e40af;'>Langkah 1 - Menghitung Efisiensi Kemampuan Historis</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Sistem melihat rekam jejak di tahun-tahun sebelumnya. Untuk setiap tahun historis, dihitung seberapa banyak output yang dihasilkan dari setiap rupiah (Realisasi Output / Realisasi Anggaran). Semua hasilnya lalu dirata-ratakan.</span><br>
+                <span style='color:#64748b;font-size:0.85em;'>Artinya, rata-rata untuk setiap Rp. 1 yang dikeluarkan, daerah ini mampu menghasilkan <b>{avg_e:.10f}</b> output.</span>
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
-                <b style='color:#1e40af;'>Langkah 2 - Hitung Target Prognosis (Kemampuan Ideal)</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>Target Prognosis = Pagu Anggaran x Rata-rata Efisiensi Riil</span><br>
-                <code style='font-size:0.95em;'>Target Prognosis = {format_currency(pagu_val)} x {avg_e:.10f} = <b>{format_number(prog_out, 4)}</b></code>
+                <b style='color:#1e40af;'>Langkah 2 - Menghitung Target Ideal (Prognosis Seharusnya)</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Dengan Anggaran yang diajukan tahun ini, kita bisa menebak target logis yang SEHARUSNYA bisa dicapai jika daerah mempertahankan kemampuan historisnya.</span><br>
+                <code style='font-size:0.95em;'>Target Seharusnya = Anggaran Tahun Ini x Kemampuan Historis</code><br>
+                <code style='font-size:0.95em;'>Target Seharusnya = {format_currency(pagu_val)} x {avg_e:.10f} = <b>{format_number(prog_out, 4)}</b> output</code>
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #f59e0b;'>
-                <b style='color:#92400e;'>Langkah 3 - Hitung Rasio Realisme (r)</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>r = Target Usulan / Target Prognosis</span><br>
-                <code style='font-size:0.95em;'>r = {format_number(curr_target, 2)} / {format_number(prog_out, 4)} = <b>{r_val:.4f}</b></code><br>
-                <span style='color:#64748b;font-size:0.85em;'>{'r > 1 -> Target ambisius' if r_val > 1 else 'r < 1 -> Target konservatif' if r_val < 1 else 'r = 1 -> Sesuai kemampuan historis'}</span>
+                <b style='color:#92400e;'>Langkah 3 - Mengukur Rasio Kewajaran Target</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Sistem membandingkan Target Usulan yang diajukan dengan Target Seharusnya.</span><br>
+                <code style='font-size:0.95em;'>Rasio = Target Usulan ({format_number(curr_target, 2)}) / Target Seharusnya ({format_number(prog_out, 4)}) = <b>{r_val:.4f}</b></code><br>
+                <span style='color:#64748b;font-size:0.85em;'><b>Kesimpulan:</b> {'Target ini terlalu AMBISIUS/Over-promising' if r_val > 1.1 else 'Target ini terlalu KONSERVATIF/Pesimis' if r_val < 0.9 else 'Target ini SANGAT REALISTIS'}</span>
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #10b981;'>
-                <b style='color:#065f46;'>Langkah 4 - Hitung Skor Log-Normal Goal Realism</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>Score = 100 x exp(-0.5 x (ln(r) / sigma_r)^2), sigma_r = {sigma_val:.4f}</span><br>
-                <code style='font-size:0.95em;'>ln(r) = ln({r_val:.4f}) = <b>{ln_r:.4f}</b></code><br>
-                <code style='font-size:0.95em;'>Score = 100 x exp(-0.5 x ({ln_r:.4f} / {sigma_val:.4f})^2)</code><br>
-                <code style='font-size:1.1em;'><b style='color:#059669;'>Skor Dimensi 3 = {score_verify:.1f}</b></code>
+                <b style='color:#065f46;'>Langkah 4 - Penilaian Skor Kesesuaian</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Berdasarkan rasio di atas, jika target usulan sangat melenceng (jauh lebih tinggi atau jauh lebih rendah dari target seharusnya), skornya akan dipotong.</span><br>
+                <code style='font-size:1.1em;'><b style='color:#059669;'>Hasil Akhir -> Skor Dimensi 3 = {score_verify:.1f} dari 100</b></code>
                 </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -868,31 +865,34 @@ if selected_sub:
                 <h4 style='color:#1e3a8a;margin:0 0 16px 0;'>[Kalkulasi] Langkah Perhitungan Dimensi 5</h4>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
-                <b style='color:#1e40af;'>Langkah 1 - Hitung Distribusi Kuartil (N={n_data} data)</b><br>
-                <code>Q1 (25%) = <b>{format_currency(q1_v)}</b></code><br>
-                <code>Q2 (Median) = <b>{format_currency(q2_v)}</b></code><br>
-                <code>Q3 (75%) = <b>{format_currency(q3_v)}</b></code><br>
-                <code>IQR = Q3 - Q1 = {format_currency(q3_v)} - {format_currency(q1_v)} = <b>{format_currency(iqr_val)}</b></code>
+                <b style='color:#1e40af;'>Langkah 1 - Susun Data dari Termurah ke Termahal (Kuartil)</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Nilai BSK (Biaya) dari seluruh daerah dijajarkan berurutan dari yang paling kecil (murah) hingga terbesar (mahal). Kemudian data dibagi menjadi 4 kelompok.</span><br>
+                <ul style='font-size:0.85em;color:#64748b;margin-top:4px;'>
+                   <li><b>Q1 (Batas Kelompok 25% Termurah):</b> {format_currency(q1_v)}</li>
+                   <li><b>Q2 (Nilai Tengah / Median):</b> {format_currency(q2_v)}</li>
+                   <li><b>Q3 (Batas Kelompok 25% Termahal):</b> {format_currency(q3_v)}</li>
+                </ul>
+                <code style='font-size:0.95em;'>Jarak Rentang Menengah (IQR) = Q3 - Q1 = <b>{format_currency(iqr_val)}</b></code>
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
-                <b style='color:#1e40af;'>Langkah 2 - Hitung Batas Pagar (Fence)</b><br>
-                <code>Batas Bawah = Q1 - 1.5 x IQR = <b>{format_currency(lb_v)}</b></code><br>
-                <code>Batas Atas = Q3 + 1.5 x IQR = <b>{format_currency(ub_v)}</b></code>
+                <b style='color:#1e40af;'>Langkah 2 - Tentukan Pagar Batas Aman</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Sistem menghitung batas harga yang dianggap sangat murah tidak wajar (Batas Bawah) dan sangat mahal tidak wajar (Batas Atas). Angka apapun di luar pagar ini disebut Anomali Ekstrem.</span><br>
+                <code style='font-size:0.95em;'>Batas Bawah Aman = <b>{format_currency(lb_v)}</b></code><br>
+                <code style='font-size:0.95em;'>Batas Atas Aman = <b>{format_currency(ub_v)}</b></code>
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #f59e0b;'>
-                <b style='color:#92400e;'>Langkah 3 - Hitung IQR Fence Distance (d)</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>BSK Daerah Ini = {format_currency(current_bsk)} -> {d_explain}</span><br>
-                <code>{d_calc}</code>
+                <b style='color:#92400e;'>Langkah 3 - Cek Posisi Daerah Anda</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Sistem mengecek apakah BSK Anda ({format_currency(current_bsk)}) melanggar pagar batas aman.</span><br>
+                <code style='font-size:0.95em;'>Kondisi Anda saat ini: <b>{d_explain}</b></code>
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #10b981;'>
-                <b style='color:#065f46;'>Langkah 4 - Hitung Skor Gaussian Decay</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>Score = 100 x exp(-0.5 x (d / sigma)^2), sigma = {sigma_val:.4f}</span><br>
-                <code>Score = 100 x exp(-0.5 x ({current_d:.4f} / {sigma_val:.4f})^2)</code><br>
-                <code style='font-size:1.1em;'><b style='color:#059669;'>Skor Dimensi 5 = {score_verify:.1f}</b></code><br><br>
-                Status: {status_label}
+                <b style='color:#065f46;'>Langkah 4 - Penilaian Skor Kewajaran Ekstrem</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Jika BSK Anda masih berada di dalam kotak Q1 hingga Q3, skor otomatis Sempurna 100. Semakin jauh Anda melampaui pagar batas aman (menjadi outlier yang ekstrem), nilai skor akan dipotong tajam hingga mendekati 0.</span><br>
+                <code style='font-size:1.1em;'><b style='color:#059669;'>Hasil Akhir -> Skor Dimensi 5 = {score_verify:.1f} dari 100</b></code><br><br>
+                <span style='font-size:0.85em;'>Status Keputusan: <b>{status_label}</b></span>
                 </div>
                 </div>
                 """
