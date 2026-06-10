@@ -191,7 +191,7 @@ table_css = """
 """
 
 st.markdown(f"{table_css}<div class='custom-summary-table'>{full_table_html}</div>", unsafe_allow_html=True)
-st.caption("[Info] Angka dalam tanda kurung (%) menunjukkan **cakupan data** - persentase sub-kegiatan yang memiliki data valid untuk dimensi tersebut. Contoh: *74.3 (23%)* berarti rata-rata skor 74.3 dihitung dari hanya 23% sub-kegiatan yang memiliki data historis.")
+st.caption("[Info] Angka dalam tanda kurung (%) menunjukkan **cakupan data** - persentase sub-kegiatan yang memiliki data valid untuk dimensi tersebut. Contoh: *74.3 (23%)* berarti rata-rata skor 74.3 dihitung dari hanya 23% sub-kegiatan yang memiliki data historis. **Catatan khusus Dimensi 4 (Perencanaan)**: Dokumen `renstra_data_pagu_diy.csv` hanya menyediakan data untuk **Kab. Bantul, Kab. Gunungkidul, Kab. Kulon Progo, dan Kota Yogyakarta**. Pemda Sleman dan Provinsi DIY akan menampilkan `-` pada D-4 dan otomatis dikecualikan dari perhitungan IKP menggunakan *Dynamic Weighting*.")
 
 st.divider()
 

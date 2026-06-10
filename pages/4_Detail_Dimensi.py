@@ -940,7 +940,7 @@ if selected_sub:
                 st.plotly_chart(fig_venn, use_container_width=True)
                 
             else:
-                st.info("[Info] Data Renstra tidak tersedia untuk pemda atau tahun ini. Dimensi ini tidak berkontribusi terhadap IKP (Dynamic Weighting).")
+                st.info("ℹ️ **Data Renstra Tidak Tersedia**: Dokumen `renstra_data_pagu_diy.csv` yang diunggah hanya mencakup data perencanaan untuk **Kab. Bantul, Kab. Gunungkidul, Kab. Kulon Progo, dan Kota Yogyakarta**. Untuk Pemda Sleman dan Provinsi DIY, Dimensi 4 secara otomatis dikecualikan dari pembobotan IKP (menggunakan *Dynamic Weighting*).")
 
         # DIMENSI 5
         st.subheader("Dimensi 5: Kewajaran Statistik (Asymmetric Tukey's Fences)")
