@@ -18,7 +18,7 @@ def get_processed_data() -> pd.DataFrame:
     """
     Menjalankan seluruh pipeline data dari raw CSV hingga kalkulasi skor akhir.
     """
-    # Cache invalidation trigger: v20 (Continuous Gaussian/Log-Normal scoring across all 5 dimensions)
+    # Cache invalidation trigger: v25 (Dimensi 2 - Non-LOO Regional comparison)
     df = load_raw()
     
     if df.empty:

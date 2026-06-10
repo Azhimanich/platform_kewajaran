@@ -321,7 +321,7 @@ if selected_sub:
             
             st.markdown(r"""
             **Metodologi - Spatial Autocorrelation (Anselin, 1995 - LISA):**  
-            Menilai kewajaran BSK daerah dibandingkan dengan rata-rata regional menggunakan standar deviasi (**Z-Score**) melalui pendekatan *Leave-One-Out* (mengeluarkan daerah subjek dari perhitungan rata-rata regional). Deviasi dikonversi menggunakan **Asymmetric Gaussian Decay Function**.
+            Menilai kewajaran BSK daerah dibandingkan dengan rata-rata regional menggunakan standar deviasi (**Z-Score**). Semua daerah (termasuk daerah subjek) dimasukkan dalam perhitungan rata-rata dan standar deviasi regional. Deviasi dikonversi menggunakan **Asymmetric Gaussian Decay Function**.
             
             **Formula Asymmetric Z-Score Decay (LISA):**
             $$\text{Score} = 100 \times \exp\left(-\frac{1}{2}\left(\frac{z}{\sigma_z}\right)^2\right)$$
@@ -366,9 +366,9 @@ if selected_sub:
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
                 <b style='color:#1e40af;'>Langkah 1 - Kumpulkan Angka dari Daerah Lain (Pembanding)</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>Sistem mengumpulkan nilai BSK dari <b>{int(n_pemb)} daerah lain</b> yang memiliki kegiatan sama, <b>tanpa memasukkan daerah Anda sendiri</b>.</span><br>
-                <span style='color:#64748b;font-size:0.85em;'>Dari data daerah lain tersebut, dicari Nilai Rata-Rata (Total BSK Daerah Lain / Jumlah Daerah) dan seberapa menyebar datanya (Standar Deviasi).</span><br>
-                <code style='font-size:0.95em;'>Rata-rata Regional = Total BSK Daerah Lain / {int(n_pemb)} = <b>{format_currency(med_cpu)}</b></code><br>
+                <span style='color:#64748b;font-size:0.85em;'>Sistem mengumpulkan nilai BSK dari <b>{int(n_pemb)} daerah pembanding</b> yang memiliki kegiatan sama (termasuk daerah Anda sendiri).</span><br>
+                <span style='color:#64748b;font-size:0.85em;'>Dari data regional tersebut, dicari Nilai Rata-Rata (Total BSK / Jumlah Daerah) dan seberapa menyebar datanya (Standar Deviasi).</span><br>
+                <code style='font-size:0.95em;'>Rata-rata Regional = Total BSK / {int(n_pemb)} = <b>{format_currency(med_cpu)}</b></code><br>
                 <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>*Catatan: Anda bisa melihat rincian daerah lainnya di tabel pembanding di bawah.</code><br>
                 <code style='font-size:0.95em;'>Standar Deviasi (Jarak Rata-rata Penyebaran) = <b>{std_display}</b></code>
                 </div>
@@ -425,21 +425,17 @@ if selected_sub:
                 
                 spasial_df = spasial_df.copy()
                 
-                # Hitung leave-one-out Z-Score untuk tampilan tabel
-                z_list = []
-                for idx_sp in spasial_df.index:
-                    bsk_i = spasial_df.loc[idx_sp, "bsk"]
-                    others_bsk = spasial_df.loc[spasial_df.index != idx_sp, "bsk"]
-                    mu_i = others_bsk.mean()
-                    sig_i = others_bsk.std(ddof=1) if len(others_bsk) > 1 else others_bsk.std(ddof=0)
-                    if sig_i > 0:
-                        z_i = (bsk_i - mu_i) / sig_i
-                    else:
-                        z_i = 0.0 if bsk_i == mu_i else ((bsk_i - mu_i) / mu_i if mu_i > 0 else 0)
-                    z_list.append({"idx": idx_sp, "z": z_i, "mu": mu_i, "sig": sig_i})
+                # Hitung Z-Score regional (termasuk subjek) untuk tampilan tabel
+                mu_regional = spasial_df["bsk"].mean()
+                sig_regional = spasial_df["bsk"].std() if len(spasial_df) > 1 else 0.0
+                if pd.isna(sig_regional):
+                    sig_regional = 0.0
                 
-                for item in z_list:
-                    spasial_df.loc[item["idx"], "z_loo"] = item["z"]
+                spasial_df["z_loo"] = np.where(
+                    sig_regional > 0,
+                    (spasial_df["bsk"] - mu_regional) / sig_regional,
+                    np.where(spasial_df["bsk"] == mu_regional, 0.0, np.where(mu_regional > 0, (spasial_df["bsk"] - mu_regional) / mu_regional, 0.0))
+                )
                 
                 def get_z_status(z):
                     az = abs(z)
@@ -448,10 +444,10 @@ if selected_sub:
                     else: return "[!] Outlier"
                 
                 def get_skor_d2(z):
-                    if z <= 0:
-                        return 100.0
-                    else:
-                        return max(0, 100 - (z * 15))
+                    sigma_high = 1.96 / np.sqrt(2 * np.log(2))
+                    sigma_low = 3.00 / np.sqrt(2 * np.log(2))
+                    sigma_z = sigma_high if z >= 0 else sigma_low
+                    return 100.0 * np.exp(-0.5 * (z / sigma_z) ** 2)
                         
                 spasial_df["skor_d2"] = spasial_df["z_loo"].apply(get_skor_d2)
                 spasial_df["status"] = spasial_df["z_loo"].apply(get_z_status)
@@ -478,7 +474,7 @@ if selected_sub:
                 #  VISUALISASI: Bell Curve Z-Score 
                 st.markdown("##### Visualisasi Distribusi Normal - Deteksi Outlier Z-Score")
                 
-                # Check if we have valid LOO Z-scores
+                # Check if we have valid Z-scores
                 if "z_loo" in spasial_df.columns:
                     viz_df = spasial_df[["pemda_label", "bsk", "z_loo"]].copy()
                     viz_df["z"] = viz_df["z_loo"]
@@ -700,332 +696,482 @@ if selected_sub:
                 st.dataframe(display_real, use_container_width=True, hide_index=True)
             
         # DIMENSI 4
-        st.subheader("Dimensi 4: Kewajaran Perencanaan (Consistency)")
+        st.subheader("Dimensi 4: Kewajaran Perencanaan (Konsistensi Renstra vs RKPD)")
         with st.container(border=True):
             d4_score = row.get("dimensi_4_score", pd.NA)
+            consistency_ratio = row.get("d4_consistency_ratio", pd.NA)
+            rkpd_programs_count = row.get("d4_rkpd_programs", pd.NA)
+            renstra_programs_count = row.get("d4_renstra_programs", pd.NA)
+            consistent_programs_count = row.get("d4_consistent_programs", pd.NA)
+            phantom_count = row.get("d4_phantom_programs", pd.NA)
+            phantom_list_str = row.get("d4_phantom_list", "")
+            phantom_pagu = row.get("d4_phantom_pagu", pd.NA)
+            phantom_pagu_ratio = row.get("d4_phantom_pagu_ratio", pd.NA)
             
             st.markdown(r"""
-            **Metodologi - Predictability & Budget Control (PEFA Framework - PI-16):**  
-            Mengevaluasi tingkat konsistensi dan disiplin perencanaan anggaran antara dokumen RKPD, PPAS, dan APBD. Deviasi (discrepancy) dihitung menggunakan **Mean Absolute Planning Discrepancy (MAPD)** dan dikonversi menggunakan **Gaussian Decay Function**.
+            **Metodologi - Consistency Score (Renstra 5 Tahun vs RKPD Tahunan):**  
+            Mengukur tingkat konsistensi antara dokumen perencanaan strategis jangka menengah (Renstra 5 Tahun)  
+            dengan dokumen rencana kerja tahunan (RKPD). Skor mencerminkan seberapa banyak program kerja di  
+            RKPD yang memiliki landasan perencanaan di Renstra.
+
+            **Formula Consistency Score:**
+            $$\text{Consistency} = \frac{|\text{Program}_{\text{RKPD}} \cap \text{Program}_{\text{Renstra}}|}{|\text{Program}_{\text{RKPD}}|}$$
             
-            **Formula Gaussian Consistency Score:**
-            $$\text{Score} = 100 \times \exp\left(-\frac{1}{2}\left(\frac{x}{\sigma_c}\right)^2\right)$$
-            $$x = \frac{|APBD - RKPD| + |APBD - PPAS|}{APBD}$$
-            $$\sigma_c = \frac{0{,}15}{\sqrt{2 \ln 2}} \approx 0{,}127$$
+            **Konversi ke Skor (Gaussian Decay):**
+            $$\text{Score} = 100 \times \exp\left(-\frac{1}{2}\left(\frac{1 - \text{Consistency}}{\sigma_c}\right)^2\right), \quad \sigma_c \approx 0{,}255$$
             
-            *Di mana $x$ melambangkan persentase planning discrepancy. Konstanta $\sigma_c$ dikalibrasi agar deviasi 15% (batas atas PEFA Grade C / toleransi wajar perencanaan) menghasilkan skor tepat 50.*
+            *Kalibrasi $\sigma_c$ agar konsistensi 70% (discrepancy 30%) menghasilkan skor tepat 50.*
             """)
             
-            c1, c2 = st.columns([3, 1])
-            c1.warning("[Info] Data perencanaan dari sistem SIPD-RI (RKPD & PPAS) belum diintegrasikan ke basis data utama. Dimensi ini **tidak diperhitungkan** dalam kalkulasi IKP saat ini (Dynamic Weighting).")
-            if pd.notna(d4_score):
-                c2.metric("Skor Dimensi 4", f"{d4_score:.1f} / 100")
+            # Red flags info box
+            st.markdown("""
+            > 🚨 **Red Flags yang Dideteksi:**
+            > - **Program Siluman**: Program di RKPD yang tidak ada di Renstra
+            > - **Alokasi Non-Prioritas**: Total pagu pada program non-Renstra
+            > - **Pergeseran Fokus**: Indikasi tidak terencana dari dokumen strategis
+            """)
+            
+            # Metrics row
+            c1, c2, c3, c4 = st.columns(4)
+            
+            if pd.notna(rkpd_programs_count):
+                c1.metric("Program di RKPD", f"{int(rkpd_programs_count)}")
             else:
-                c2.metric("Skor Dimensi 4", "Tidak Ada Data")
-            
-            rkpd_val = row.get("rkpd", pd.NA)
-            ppas_val = row.get("ppas", pd.NA)
-            apbd_val = row.get("pagu", pd.NA)
-            
-            if pd.notna(d4_score) and pd.notna(rkpd_val) and pd.notna(ppas_val) and pd.notna(apbd_val):
-                sigma_val = 0.15 / np.sqrt(2 * np.log(2))
-                discrepancy = (abs(apbd_val - rkpd_val) + abs(apbd_val - ppas_val)) / apbd_val if apbd_val > 0 else 0
-                score_verify = 100 * np.exp(-0.5 * (discrepancy / sigma_val) ** 2)
+                c1.metric("Program di RKPD", "-")
                 
-                st.markdown(f"""
+            if pd.notna(renstra_programs_count):
+                c2.metric("Program di Renstra", f"{int(renstra_programs_count)}")
+            else:
+                c2.metric("Program di Renstra", "-")
+                
+            if pd.notna(phantom_count):
+                c3.metric("Program Siluman",
+                         f"{int(phantom_count)}",
+                         delta="Tidak terencana" if int(phantom_count) > 0 else "Nihil",
+                         delta_color="inverse" if int(phantom_count) > 0 else "normal")
+            else:
+                c3.metric("Program Siluman", "-")
+                
+            if pd.isna(d4_score):
+                c4.metric("Skor Dimensi 4", "Tidak Ada Data")
+            else:
+                c4.metric("Skor Dimensi 4", f"{d4_score:.1f} / 100")
+            
+            # Show full calculation if data is available
+            if pd.notna(d4_score) and pd.notna(consistency_ratio):
+                sigma_c = 0.30 / np.sqrt(2 * np.log(2))
+                discrepancy = 1.0 - consistency_ratio
+                score_verify = 100.0 * np.exp(-0.5 * (discrepancy / sigma_c) ** 2)
+                
+                # Consistency grade
+                if consistency_ratio >= 0.90:
+                    cons_label = "Sangat Konsisten"
+                    cons_color = "#16a34a"
+                elif consistency_ratio >= 0.80:
+                    cons_label = "Konsisten"
+                    cons_color = "#ca8a04"
+                elif consistency_ratio >= 0.70:
+                    cons_label = "Cukup Konsisten"
+                    cons_color = "#ea580c"
+                else:
+                    cons_label = "Kurang Konsisten"
+                    cons_color = "#dc2626"
+                
+                tahun_val = int(row.get("tahun", 0))
+                rkpd_p = int(rkpd_programs_count)
+                renstra_p = int(renstra_programs_count)
+                consistent_p = int(consistent_programs_count)
+                phantom_p = int(phantom_count)
+                
+                step_html = f"""
                 <div style='background:linear-gradient(135deg,#f8fafc,#eef2ff);padding:20px;border-radius:12px;border:1px solid #c7d2fe;margin:12px 0;'>
                 <h4 style='color:#1e3a8a;margin:0 0 16px 0;'>[Kalkulasi] Langkah Perhitungan Dimensi 4</h4>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
-                <b style='color:#1e40af;'>Langkah 1 - Ambil Data Perencanaan</b><br>
-                <code style='font-size:0.95em;'>Pagu RKPD = <b>{format_currency(rkpd_val)}</b></code><br>
-                <code style='font-size:0.95em;'>Pagu PPAS = <b>{format_currency(ppas_val)}</b></code><br>
-                <code style='font-size:0.95em;'>Pagu APBD = <b>{format_currency(apbd_val)}</b></code>
+                <b style='color:#1e40af;'>Langkah 1 - Kumpulkan Himpunan Program</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Sistem mengidentifikasi semua kode program unik dari dua sumber data: RKPD {tahun_val} dan Renstra 2025-2029.</span><br>
+                <code style='font-size:0.95em;'>Program RKPD {tahun_val} = <b>{rkpd_p} program unik</b></code><br>
+                <code style='font-size:0.95em;'>Program Renstra 2025-2029 = <b>{renstra_p} program unik</b></code>
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #f59e0b;'>
-                <b style='color:#92400e;'>Langkah 2 - Hitung Penyimpangan Perencanaan (Discrepancy)</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>Menghitung selisih antara pagu APBD akhir dengan usulan awal (RKPD & PPAS).</span><br>
-                <code style='font-size:0.95em;'>Penyimpangan = (|APBD - RKPD| + |APBD - PPAS|) / APBD</code><br>
-                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Penyimpangan = (|{format_currency(apbd_val)} - {format_currency(rkpd_val)}| + |{format_currency(apbd_val)} - {format_currency(ppas_val)}|) / {format_currency(apbd_val)}</code><br>
-                <code style='font-size:0.95em;'>Hasil Penyimpangan = <b>{discrepancy:.4f}</b> ({discrepancy*100:.1f}%)</code>
+                <b style='color:#92400e;'>Langkah 2 - Hitung Irisan (Intersection)</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Dari {rkpd_p} program RKPD, berapa yang memiliki landasan di Renstra?</span><br>
+                <code style='font-size:0.95em;'>Program Konsisten (RKPD &cap; Renstra) = <b>{consistent_p} program</b></code><br>
+                <code style='font-size:0.95em;'>Program Siluman (RKPD - Renstra) = <b>{phantom_p} program</b></code>
+                </div>
+                
+                <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #8b5cf6;'>
+                <b style='color:#5b21b6;'>Langkah 3 - Hitung Rasio Konsistensi</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Consistency = Program Konsisten / Total Program RKPD</span><br>
+                <code style='font-size:0.95em;'>Consistency = {consistent_p} / {rkpd_p} = <b style='color:{cons_color};'>{consistency_ratio:.4f} ({consistency_ratio*100:.1f}%) &mdash; {cons_label}</b></code>
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #10b981;'>
-                <b style='color:#065f46;'>Langkah 3 - Penilaian Skor Kesesuaian Perencanaan</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>Semakin besar penyimpangan (perubahan mendadak pada anggaran di ujung waktu), semakin besar penalti pemotongan skor secara melengkung ke bawah.</span><br>
-                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Kalkulasi Skor = 100 x exp(-0.5 x ({discrepancy:.4f} / {sigma_val:.4f})^2)</code><br>
-                <code style='font-size:1.1em;'><b style='color:#059669;'>Hasil Akhir -> Skor Dimensi 4 = {score_verify:.1f} dari 100</b></code>
+                <b style='color:#065f46;'>Langkah 4 - Konversi ke Skor (Gaussian Decay)</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Discrepancy = 1 - Consistency = {discrepancy:.4f}. Semakin besar discrepancy, skor turun melengkung.</span><br>
+                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>100 &times; exp(-0.5 &times; ({discrepancy:.4f} / {sigma_c:.4f})&sup2;)</code><br>
+                <code style='font-size:1.1em;'><b style='color:#059669;'>Hasil Akhir &rarr; Skor Dimensi 4 = {score_verify:.1f} dari 100</b></code>
                 </div>
                 </div>
-                """, unsafe_allow_html=True)
+                """
+                st.markdown(step_html, unsafe_allow_html=True)
                 
-            tier_html = (
-                "<details style='margin-top:8px;'><summary style='cursor:pointer;color:#1e3a8a;font-weight:bold;font-size:0.85rem;'>[Chart] Tabel Kalibrasi Konsistensi Perencanaan (PEFA PI-16)</summary>"
-                "<table style='width:100%;border-collapse:collapse;font-size:0.85rem;margin-top:8px;'>"
-                "<tr style='background:#f1f5f9;'><th style='padding:8px;text-align:center;border-bottom:1px solid #cbd5e1;'>Planning Discrepancy (x)</th><th style='padding:8px;text-align:center;border-bottom:1px solid #cbd5e1;'>Skor</th><th style='padding:8px;text-align:left;border-bottom:1px solid #cbd5e1;'>Kategori / PEFA Grade</th></tr>"
-                "<tr style='background:#f0fdf4;'><td style='padding:6px 8px;text-align:center;'>0% (Sempurna)</td><td style='padding:6px 8px;text-align:center;font-weight:bold;'>100.0</td><td style='padding:6px 8px;color:#22c55e;'>Sangat Konsisten (Grade A)</td></tr>"
-                "<tr><td style='padding:6px 8px;text-align:center;'>5%</td><td style='padding:6px 8px;text-align:center;'>92.6</td><td style='padding:6px 8px;color:#22c55e;'>Konsisten (Grade A)</td></tr>"
-                "<tr><td style='padding:6px 8px;text-align:center;'>10%</td><td style='padding:6px 8px;text-align:center;'>73.4</td><td style='padding:6px 8px;color:#eab308;'>Cukup Konsisten (Grade B)</td></tr>"
-                "<tr style='background:#fef2f2;'><td style='padding:6px 8px;text-align:center;font-weight:bold;'>15% (Batas PEFA)</td><td style='padding:6px 8px;text-align:center;font-weight:bold;'>50.0</td><td style='padding:6px 8px;color:#ef4444;font-weight:bold;'>Batas Toleransi Deviasi (Grade C)</td></tr>"
-                "<tr><td style='padding:6px 8px;text-align:center;'>25%</td><td style='padding:6px 8px;text-align:center;'>14.6</td><td style='padding:6px 8px;color:#7f1d1d;'>Tidak Konsisten (Grade D)</td></tr>"
-                "</table>"
-                "<div style='margin-top:8px;font-size:0.8rem;color:#64748b;'>"
-                "<b>Referensi Akademik:</b> PEFA Secretariat. (2016). <i>Public Expenditure and Financial Accountability Framework</i>. Indicator PI-16: Predictability and Control in Budget Execution."
-                "</div>"
-                "</details>"
-            )
-            st.markdown(tier_html, unsafe_allow_html=True)
+                # Red Flags Section
+                if pd.notna(phantom_count) and int(phantom_count) > 0:
+                    phantom_pagu_fmt = format_currency(phantom_pagu) if pd.notna(phantom_pagu) else "N/A"
+                    phantom_ratio_fmt = f"{phantom_pagu_ratio*100:.1f}%" if pd.notna(phantom_pagu_ratio) else "N/A"
+                    
+                    rf_html = f"""
+                    <div style='background:linear-gradient(135deg,#fff5f5,#fee2e2);padding:16px;border-radius:12px;border:2px solid #fca5a5;margin:12px 0;'>
+                    <h4 style='color:#991b1b;margin:0 0 12px 0;'>Red Flag Terdeteksi: Program Siluman / Inkonsistensi</h4>
+                    <div style='display:grid;grid-template-columns:1fr 1fr;gap:12px;'>
+                      <div style='background:white;padding:12px;border-radius:8px;'>
+                        <div style='color:#7f1d1d;font-weight:bold;font-size:0.9em;'>Jumlah Program Siluman</div>
+                        <div style='font-size:1.8em;font-weight:800;color:#dc2626;'>{int(phantom_count)}</div>
+                        <div style='color:#64748b;font-size:0.8em;'>Program di RKPD tanpa dasar Renstra</div>
+                      </div>
+                      <div style='background:white;padding:12px;border-radius:8px;'>
+                        <div style='color:#7f1d1d;font-weight:bold;font-size:0.9em;'>Total Pagu Tidak Terencana</div>
+                        <div style='font-size:1.3em;font-weight:800;color:#dc2626;'>{phantom_pagu_fmt}</div>
+                        <div style='color:#64748b;font-size:0.8em;'>({phantom_ratio_fmt} dari total pagu)</div>
+                      </div>
+                    </div>
+                    </div>
+                    """
+                    st.markdown(rf_html, unsafe_allow_html=True)
+                    
+                    # Show phantom program list
+                    if phantom_list_str:
+                        phantom_codes = [c.strip() for c in phantom_list_str.split(",") if c.strip()]
+                        phantom_details = []
+                        rkpd_year_df = df[(df["kodepemda"] == row["kodepemda"]) & (df["tahun"] == row["tahun"])]
+                        for pcode in phantom_codes:
+                            match = rkpd_year_df[rkpd_year_df["kodeprogram"] == pcode]
+                            prog_name = match["uraiprogram"].iloc[0] if not match.empty else "N/A"
+                            prog_pagu_sum = match["pagu"].sum() if not match.empty else 0
+                            n_sub = len(match)
+                            phantom_details.append({
+                                "Kode Program": pcode,
+                                "Nama Program": prog_name[:80] + "..." if len(prog_name) > 80 else prog_name,
+                                "Sub-Kegiatan": n_sub,
+                                "Total Pagu": format_currency(prog_pagu_sum),
+                                "Status": "Tidak ada di Renstra"
+                            })
+                        
+                        if phantom_details:
+                            st.markdown("##### Daftar Program Siluman (Ada di RKPD, Tidak Ada di Renstra)")
+                            phantom_df_show = pd.DataFrame(phantom_details)
+                            phantom_df_show.insert(0, "No.", range(1, len(phantom_df_show)+1))
+                            st.dataframe(phantom_df_show, use_container_width=True, hide_index=True)
+                else:
+                    st.success("Tidak ada program siluman terdeteksi. Seluruh program RKPD memiliki landasan yang valid di dokumen Renstra.")
+                
+                # Calibration table
+                tier_html = (
+                    "<details style='margin-top:8px;'><summary style='cursor:pointer;color:#1e3a8a;font-weight:bold;font-size:0.85rem;'>[Chart] Tabel Kalibrasi Skor Konsistensi Renstra-RKPD</summary>"
+                    "<table style='width:100%;border-collapse:collapse;font-size:0.85rem;margin-top:8px;'>"
+                    "<tr style='background:#f1f5f9;'><th style='padding:8px;text-align:center;border-bottom:1px solid #cbd5e1;'>Rasio Konsistensi</th>"
+                    "<th style='padding:8px;text-align:center;border-bottom:1px solid #cbd5e1;'>Skor</th>"
+                    "<th style='padding:8px;text-align:left;border-bottom:1px solid #cbd5e1;'>Interpretasi</th></tr>"
+                    "<tr style='background:#f0fdf4;'><td style='padding:6px 8px;text-align:center;'>100% (Sempurna)</td><td style='padding:6px 8px;text-align:center;font-weight:bold;'>100.0</td><td style='padding:6px 8px;color:#22c55e;'>Sangat Konsisten</td></tr>"
+                    "<tr><td style='padding:6px 8px;text-align:center;'>90%</td><td style='padding:6px 8px;text-align:center;'>88.2</td><td style='padding:6px 8px;color:#22c55e;'>Konsisten</td></tr>"
+                    "<tr><td style='padding:6px 8px;text-align:center;'>80%</td><td style='padding:6px 8px;text-align:center;'>59.5</td><td style='padding:6px 8px;color:#eab308;'>Cukup Konsisten</td></tr>"
+                    "<tr style='background:#fef2f2;'><td style='padding:6px 8px;text-align:center;font-weight:bold;'>70% (Batas Wajar)</td><td style='padding:6px 8px;text-align:center;font-weight:bold;'>50.0</td><td style='padding:6px 8px;color:#ef4444;font-weight:bold;'>Batas Toleransi</td></tr>"
+                    "<tr><td style='padding:6px 8px;text-align:center;'>60%</td><td style='padding:6px 8px;text-align:center;'>26.3</td><td style='padding:6px 8px;color:#7f1d1d;'>Tidak Konsisten</td></tr>"
+                    "<tr><td style='padding:6px 8px;text-align:center;'>50%</td><td style='padding:6px 8px;text-align:center;'>7.9</td><td style='padding:6px 8px;color:#7f1d1d;'>Sangat Tidak Konsisten</td></tr>"
+                    "</table>"
+                    "<div style='margin-top:8px;font-size:0.8rem;color:#64748b;'>"
+                    "<b>Referensi:</b> Consistency Score = |Program_RKPD &cap; Program_Renstra| / |Program_RKPD|. "
+                    "Gaussian Decay: sigma_c = 0.30/sqrt(2*ln(2)). Sumber: renstra_data_pagu_diy.csv (Renstra DIY 2025-2029)."
+                    "</div>"
+                    "</details>"
+                )
+                st.markdown(tier_html, unsafe_allow_html=True)
+                
+                # Venn visualization
+                st.markdown("##### Visualisasi Diagram Konsistensi Renstra vs RKPD")
+                import plotly.graph_objects as go
+                
+                n_only_renstra = int(renstra_programs_count) - int(consistent_programs_count)
+                n_intersection = int(consistent_programs_count)
+                n_only_rkpd = int(phantom_count)
+                
+                fig_venn = go.Figure()
+                theta_arr = np.linspace(0, 2*np.pi, 100)
+                cx1, cy1, r1 = -0.35, 0, 1.0
+                cx2, cy2, r2 = 0.35, 0, 1.0
+                
+                fig_venn.add_trace(go.Scatter(
+                    x=cx1 + r1*np.cos(theta_arr), y=cy1 + r1*np.sin(theta_arr),
+                    fill='toself', fillcolor='rgba(59,130,246,0.15)',
+                    line=dict(color='#1d4ed8', width=3),
+                    name=f'Renstra ({int(renstra_programs_count)} program)', showlegend=True
+                ))
+                fig_venn.add_trace(go.Scatter(
+                    x=cx2 + r2*np.cos(theta_arr), y=cy2 + r2*np.sin(theta_arr),
+                    fill='toself', fillcolor='rgba(239,68,68,0.12)',
+                    line=dict(color='#dc2626', width=3),
+                    name=f'RKPD {int(row.get("tahun",""))} ({int(rkpd_programs_count)} program)', showlegend=True
+                ))
+                
+                fig_venn.add_annotation(x=-0.88, y=0,
+                    text=f"<b>Hanya di<br>Renstra</b><br>{n_only_renstra}",
+                    showarrow=False, font=dict(size=13, color='#1d4ed8'))
+                fig_venn.add_annotation(x=0, y=0,
+                    text=f"<b>Konsisten</b><br>{n_intersection} program",
+                    showarrow=False, bgcolor='rgba(240,255,244,0.9)',
+                    font=dict(size=13, color='#065f46'))
+                fig_venn.add_annotation(x=0.88, y=0,
+                    text=f"<b>Siluman<br>di RKPD</b><br>{n_only_rkpd}",
+                    showarrow=False, font=dict(size=13, color='#dc2626'))
+                fig_venn.add_annotation(x=0, y=1.4,
+                    text=f"<b>Konsistensi: {consistency_ratio*100:.1f}%  Skor D4: {d4_score:.1f}/100</b>",
+                    showarrow=False, font=dict(size=15, color='#1e3a8a'))
+                
+                fig_venn.update_layout(
+                    height=340, showlegend=True,
+                    xaxis=dict(visible=False, range=[-1.8, 1.8]),
+                    yaxis=dict(visible=False, range=[-1.4, 1.6], scaleanchor='x'),
+                    plot_bgcolor='white',
+                    margin=dict(t=20, b=20, l=20, r=20),
+                    legend=dict(orientation='h', yanchor='bottom', y=-0.15, xanchor='center', x=0.5)
+                )
+                st.plotly_chart(fig_venn, use_container_width=True)
+                
+            else:
+                st.info("[Info] Data Renstra tidak tersedia untuk pemda atau tahun ini. Dimensi ini tidak berkontribusi terhadap IKP (Dynamic Weighting).")
 
         # DIMENSI 5
-        st.subheader("Dimensi 5: Kewajaran Statistik (Deteksi Anomali IQR)")
+        st.subheader("Dimensi 5: Kewajaran Statistik (Asymmetric Tukey's Fences)")
         with st.container(border=True):
             d5_score = row.get("dimensi_5_score", pd.NA)
             is_anomali = row.get("is_anomali", False)
             
             st.markdown(r"""
-            **Metodologi - Gaussian Decay Scoring (Tukey, 1977; Iglewicz & Hoaglin, 1993):**  
-            Mendeteksi anomali Biaya Satuan Kinerja (BSK) menggunakan **IQR Fence Distance** terhadap seluruh data dengan nomenklatur yang sama, lalu mengkonversi jarak tersebut ke skor kontinu menggunakan **Gaussian Decay Function**.
+            **Metodologi - Pagar Asimetris Berbasis Kebijakan (Asymmetric Tukey's Fences):**  
+            Mendeteksi anomali BSK menggunakan batas atas ketat (pemborosan) dan batas bawah yang aman (tidak boleh negatif).
             
-            **Langkah 1 - IQR Fence Distance ($d$):**
-            $$d = \begin{cases} 0 & \text{jika } Q1 \le BSK \le Q3 \\ \frac{Q1 - BSK}{IQR} & \text{jika } BSK < Q1 \\ \frac{BSK - Q3}{IQR} & \text{jika } BSK > Q3 \end{cases}$$
+            **Formula Batas Aman:**
+            $$\text{Batas Atas} = Q_3 + 1{,}5 \times IQR$$
+            $$\text{Batas Bawah} = Q_1 - 0{,}2 \times IQR$$
             
-            **Langkah 2 - Gaussian Decay Score:**
-            $$\text{Score} = 100 \times \exp\left(-\frac{1}{2}\left(\frac{d}{\sigma}\right)^2\right), \quad \sigma = \frac{1{,}5}{\sqrt{2 \ln 2}} \approx 1{,}274$$
+            **Jarak Outlier ($d$):**
+            $$d = \begin{cases} 0 & \text{jika Batas Bawah} \le BSK \le \text{Batas Atas} \\ \dfrac{\text{Batas Bawah} - BSK}{IQR} & \text{jika } BSK < \text{Batas Bawah} \\ \dfrac{BSK - \text{Batas Atas}}{IQR} & \text{jika } BSK > \text{Batas Atas} \end{cases}$$
             
-            Kalibrasi $\sigma$ dipilih agar skor **tepat 50** di Tukey Inner Fence ($d = 1{,}5$).
+            **Skor Gaussian Decay:**
+            $$\text{Skor} = 100 \times \exp\left(-\frac{1}{2}\left(\frac{d}{\sigma}\right)^2\right), \quad \sigma = 0{,}5$$
             """)
             
+            # Metrics row
             c1, c2, c3, c4 = st.columns(4)
-            q1 = row.get("stat_q1", pd.NA)
-            q3 = row.get("stat_q3", pd.NA)
-            ub = row.get("stat_upper_bound", pd.NA)
-            lb = row.get("stat_lower_bound", pd.NA)
+            q1_v  = row.get("stat_q1", pd.NA)
+            q3_v  = row.get("stat_q3", pd.NA)
+            ub_v  = row.get("stat_upper_bound", pd.NA)
+            lb_v  = row.get("stat_lower_bound", pd.NA)
             d_val = row.get("stat_iqr_distance", pd.NA)
             
-            c1.metric("Kuartil 1 (Q1)", format_currency(q1) if pd.notna(q1) else "-")
-            c2.metric("Kuartil 3 (Q3)", format_currency(q3) if pd.notna(q3) else "-")
-            c3.metric("IQR Distance (d)", f"{d_val:.4f}" if pd.notna(d_val) else "-")
+            c1.metric("Batas Bawah (k₂=0.2)", format_currency(lb_v) if pd.notna(lb_v) else "-")
+            c2.metric("Batas Atas (k₁=1.5)", format_currency(ub_v) if pd.notna(ub_v) else "-")
+            c3.metric("Jarak Outlier (d)", f"{d_val:.4f}" if pd.notna(d_val) else "-")
             
-            if is_anomali:
-                c4.metric("Status", "[Warning] ANOMALI", delta=f"d >= 1.5", delta_color="inverse")
+            if pd.isna(d5_score):
+                c4.metric("Skor Dimensi 5", "Tidak Ada Data")
+            elif is_anomali:
+                c4.metric("Skor Dimensi 5", f"{d5_score:.1f} / 100", delta="ANOMALI", delta_color="inverse")
             else:
-                c4.metric("Status", "[OK] WAJAR", delta=f"d < 1.5")
-                
-            st.markdown(f"**Skor Dimensi 5:** {format_number(d5_score, 1)} / 100")
+                c4.metric("Skor Dimensi 5", f"{d5_score:.1f} / 100", delta="Wajar", delta_color="normal")
             
-            if is_anomali:
-                st.warning(f"Sub-kegiatan ini terdeteksi sebagai pencilan (outlier) secara statistik. BSK daerah ini ({format_currency(row['bsk'])}) berada di luar rentang wajar sistem ({format_currency(lb)} s/d {format_currency(ub)}).")
-            
-            # Fetch ALL data for this nomenclature across all Pemdas
+            # --- Detail Perhitungan ---
             universal_df = df[
-                (df["kodesubkegiatan"] == row["kodesubkegiatan"]) & 
+                (df["kodesubkegiatan"] == row["kodesubkegiatan"]) &
                 (df["satuan"] == row["satuan"]) &
                 (df["bsk"].notna()) & (df["bsk"] > 0)
             ].sort_values(by="bsk")
             
-            # Detail Perhitungan Transparan
             if not universal_df.empty and len(universal_df) >= 4:
-                bsk_vals = universal_df["bsk"].values
-                n_data = len(bsk_vals)
+                bsk_arr   = universal_df["bsk"].values
+                n_data    = len(bsk_arr)
+                q1_calc   = np.percentile(bsk_arr, 25)
+                q2_calc   = np.percentile(bsk_arr, 50)
+                q3_calc   = np.percentile(bsk_arr, 75)
+                iqr_calc  = q3_calc - q1_calc
+                ub_calc   = q3_calc + 1.5 * iqr_calc
+                lb_calc   = q1_calc - 0.2 * iqr_calc
+                current_bsk = row.get("bsk", 0)
                 
-                # Menghitung Kuartil
-                q1_v = np.percentile(bsk_vals, 25)
-                q2_v = np.percentile(bsk_vals, 50)  # Median
-                q3_v = np.percentile(bsk_vals, 75)
-                q4_v = np.max(bsk_vals)             # Maksimum
-                
-                iqr_val = q3_v - q1_v
-                lb_v = q1_v - 1.5 * iqr_val
-                ub_v = q3_v + 1.5 * iqr_val
-                
-                current_bsk = row.get('bsk', 0)
-                current_d = d_val if pd.notna(d_val) else 0
-                
-                # Status berdasarkan fence distance
-                if current_d >= 3.0:
-                    status_label = '<b style="color:#7f1d1d;">ANOMALI EKSTREM (d >= 3.0, di luar outer fence)</b>'
-                elif current_d >= 1.5:
-                    status_label = '<b style="color:#ef4444;">ANOMALI (d >= 1.5, di luar inner fence)</b>'
-                elif current_d >= 1.0:
-                    status_label = '<b style="color:#f59e0b;">PERLU PERHATIAN (1.0 <= d < 1.5)</b>'
+                # Jarak d manual untuk verifikasi UI
+                if current_bsk < lb_calc:
+                    current_d = (lb_calc - current_bsk) / iqr_calc if iqr_calc > 0 else 0.0
+                elif current_bsk > ub_calc:
+                    current_d = (current_bsk - ub_calc) / iqr_calc if iqr_calc > 0 else 0.0
                 else:
-                    status_label = '<b style="color:#22c55e;">DALAM BATAS WAJAR (d < 1.0)</b>'
+                    current_d = 0.0
+                    
+                sigma_val = 0.5
+                score_verify = 100.0 * np.exp(-0.5 * (current_d / sigma_val) ** 2) if current_d > 0 else 100.0
                 
-                # Sigma value
-                sigma_val = 1.5 / np.sqrt(2 * np.log(2))
-                score_verify = 100 * np.exp(-0.5 * (current_d / sigma_val) ** 2)
-                
-                # Distance calc text
-                if current_bsk < q1_v:
-                    d_calc = f"d = (Q1 - BSK) / IQR = ({format_currency(q1_v)} - {format_currency(current_bsk)}) / {format_currency(iqr_val)} = <b>{current_d:.4f}</b>"
-                    d_explain = "BSK di bawah Q1"
-                elif current_bsk > q3_v:
-                    d_calc = f"d = (BSK - Q3) / IQR = ({format_currency(current_bsk)} - {format_currency(q3_v)}) / {format_currency(iqr_val)} = <b>{current_d:.4f}</b>"
-                    d_explain = "BSK di atas Q3"
+                # Status label
+                if current_d > 0 and current_bsk < lb_calc:
+                    status_label = '<b style="color:#7f1d1d;">ANOMALI BAWAH (Anggaran Terlalu Rendah)</b>'
+                elif current_d > 0 and current_bsk > ub_calc:
+                    status_label = '<b style="color:#ef4444;">ANOMALI ATAS (Anggaran Terlalu Tinggi / Pemborosan)</b>'
                 else:
-                    d_calc = "d = <b>0.0000</b>"
-                    d_explain = "BSK dalam kotak IQR [Q1, Q3]"
+                    status_label = '<b style="color:#22c55e;">DALAM BATAS WAJAR (Sempurna)</b>'
+                
+                # Distance calc text explanation
+                if current_bsk < lb_calc:
+                    d_calc = f"d = (Batas Bawah - BSK) / IQR = ({format_currency(lb_calc)} - {format_currency(current_bsk)}) / {format_currency(iqr_calc)} = <b>{current_d:.4f}</b>"
+                elif current_bsk > ub_calc:
+                    d_calc = f"d = (BSK - Batas Atas) / IQR = ({format_currency(current_bsk)} - {format_currency(ub_calc)}) / {format_currency(iqr_calc)} = <b>{current_d:.4f}</b>"
+                else:
+                    d_calc = "d = <b>0.0000</b> (karena BSK di dalam batas aman)"
                 
                 dim5_html = f"""
                 <div style='background:linear-gradient(135deg,#f8fafc,#eef2ff);padding:20px;border-radius:12px;border:1px solid #c7d2fe;margin:12px 0;'>
-                <h4 style='color:#1e3a8a;margin:0 0 16px 0;'>[Kalkulasi] Langkah Perhitungan Dimensi 5</h4>
+                <h4 style='color:#1e3a8a;margin:0 0 16px 0;'>[Kalkulasi] Langkah Perhitungan Dimensi 5 (Asymmetric Tukey)</h4>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
-                <b style='color:#1e40af;'>Langkah 1 - Susun Data dari Termurah ke Termahal (Kuartil)</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>Nilai BSK (Biaya) dari seluruh daerah dijajarkan berurutan dari yang paling kecil (murah) hingga terbesar (mahal). Kemudian data dibagi menjadi 4 kelompok.</span><br>
+                <b style='color:#1e40af;'>Langkah 1 - Susun Data &amp; Hitung Kuartil ({n_data} daerah pembanding)</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>BSK daerah pembanding diurutkan dari yang terkecil ke terbesar.</span><br>
                 <ul style='font-size:0.85em;color:#64748b;margin-top:4px;'>
-                   <li><b>Q1 (Batas Kelompok 25% Termurah):</b> {format_currency(q1_v)}</li>
-                   <li><b>Q2 (Nilai Tengah / Median):</b> {format_currency(q2_v)}</li>
-                   <li><b>Q3 (Batas Kelompok 25% Termahal):</b> {format_currency(q3_v)}</li>
+                   <li><b>Q1 (25% Terendah):</b> {format_currency(q1_calc)}</li>
+                   <li><b>Q3 (75% Tertinggi):</b> {format_currency(q3_calc)}</li>
+                   <li><b>IQR (Rentang Tengah):</b> Q3 - Q1 = <b>{format_currency(iqr_calc)}</b></li>
                 </ul>
-                <code style='font-size:0.95em;'>Jarak Rentang Menengah (IQR) = Q3 - Q1 = <b>{format_currency(iqr_val)}</b></code>
                 </div>
                 
-                <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
-                <b style='color:#1e40af;'>Langkah 2 - Tentukan Pagar Batas Aman</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>Sistem menghitung batas harga yang dianggap sangat murah tidak wajar (Batas Bawah) dan sangat mahal tidak wajar (Batas Atas). Angka apapun di luar pagar ini disebut Anomali Ekstrem.</span><br>
-                <code style='font-size:0.95em;'>Batas Bawah Aman = Q1 - (1.5 x IQR)</code><br>
-                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Batas Bawah = {format_currency(q1_v)} - (1.5 x {format_currency(iqr_val)}) = <b>{format_currency(lb_v)}</b></code><br>
-                <br>
-                <code style='font-size:0.95em;'>Batas Atas Aman = Q3 + (1.5 x IQR)</code><br>
-                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Batas Atas = {format_currency(q3_v)} + (1.5 x {format_currency(iqr_val)}) = <b>{format_currency(ub_v)}</b></code>
+                <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #8b5cf6;'>
+                <b style='color:#5b21b6;'>Langkah 2 - Tentukan Batas Aman Kebijakan</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Batas atas ketat untuk deteksi pemborosan (k1=1.5). Batas bawah longgar dan tidak boleh negatif (k2=0.2).</span><br>
+                <code style='font-size:0.95em;'><b>Batas Atas</b> = Q3 + (1.5 × IQR) = {format_currency(q3_calc)} + (1.5 × {format_currency(iqr_calc)}) = <b style='color:#dc2626;'>{format_currency(ub_calc)}</b></code><br>
+                <code style='font-size:0.95em;'><b>Batas Bawah</b> = Q1 - (0.2 × IQR) = {format_currency(q1_calc)} - (0.2 × {format_currency(iqr_calc)}) = <b style='color:#2563eb;'>{format_currency(lb_calc)}</b></code>
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #f59e0b;'>
-                <b style='color:#92400e;'>Langkah 3 - Cek Posisi Daerah Anda</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>Sistem mengecek apakah BSK Anda ({format_currency(current_bsk)}) melanggar pagar batas aman.</span><br>
-                <code style='font-size:0.95em;'>Kondisi Anda saat ini: <b>{d_explain}</b></code>
+                <b style='color:#92400e;'>Langkah 3 - Cek Jarak Outlier (d)</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>BSK daerah Anda = {format_currency(current_bsk)}.</span><br>
+                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>{d_calc}</code>
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #10b981;'>
-                <b style='color:#065f46;'>Langkah 4 - Penilaian Skor Kewajaran Ekstrem</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>Jika BSK Anda masih berada di dalam kotak Q1 hingga Q3, skor otomatis Sempurna 100. Semakin jauh Anda melampaui pagar batas aman (menjadi outlier yang ekstrem), nilai skor akan dipotong tajam hingga mendekati 0.</span><br>
-                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Kalkulasi Jarak (d): {d_calc}</code><br>
-                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Kalkulasi Skor: 100 x exp(-0.5 x ({current_d:.4f} / {sigma_val:.4f})^2)</code><br>
-                <code style='font-size:1.1em;'><b style='color:#059669;'>Hasil Akhir -> Skor Dimensi 5 = {score_verify:.1f} dari 100</b></code><br><br>
-                <span style='font-size:0.85em;'>Status Keputusan: <b>{status_label}</b></span>
+                <b style='color:#065f46;'>Langkah 4 - Hitung Skor Akhir (Gaussian Decay)</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Jika d = 0 (di dalam batas aman), skor langsung Sempurna (100). Jika di luar batas, skor turun secara Gaussian.</span><br>
+                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>100 × exp(-0.5 × ({current_d:.4f} / 0.5)²)</code><br>
+                <code style='font-size:1.1em;'><b style='color:#059669;'>Skor Dimensi 5 = {score_verify:.1f} / 100</b></code><br><br>
+                <span style='font-size:0.85em;'>Status: {status_label}</span>
                 </div>
                 </div>
                 """
                 st.markdown(dim5_html, unsafe_allow_html=True)
                 
-                # Tabel referensi skor
-                tier_html = (
-                    "<details style='margin-top:8px;'><summary style='cursor:pointer;color:#1e3a8a;font-weight:bold;font-size:0.85rem;'>[Chart] Tabel Kalibrasi Skor (Gaussian Decay)</summary>"
-                    "<table style='width:100%;border-collapse:collapse;font-size:0.85rem;margin-top:8px;'>"
-                    "<tr style='background:#f1f5f9;'><th style='padding:8px;text-align:center;border-bottom:1px solid #cbd5e1;'>Fence Distance (d)</th><th style='padding:8px;text-align:center;border-bottom:1px solid #cbd5e1;'>Skor</th><th style='padding:8px;text-align:left;border-bottom:1px solid #cbd5e1;'>Interpretasi</th></tr>"
-                    "<tr style='background:#f0fdf4;'><td style='padding:6px 8px;text-align:center;'>0.0 (dalam IQR)</td><td style='padding:6px 8px;text-align:center;font-weight:bold;'>100.0</td><td style='padding:6px 8px;color:#22c55e;'>Sangat Wajar</td></tr>"
-                    "<tr><td style='padding:6px 8px;text-align:center;'>0.5</td><td style='padding:6px 8px;text-align:center;'>92.6</td><td style='padding:6px 8px;color:#22c55e;'>Wajar</td></tr>"
-                    "<tr><td style='padding:6px 8px;text-align:center;'>1.0</td><td style='padding:6px 8px;text-align:center;'>73.4</td><td style='padding:6px 8px;color:#eab308;'>Perlu Perhatian</td></tr>"
-                    "<tr style='background:#fef2f2;'><td style='padding:6px 8px;text-align:center;font-weight:bold;'>1.5 (Inner Fence)</td><td style='padding:6px 8px;text-align:center;font-weight:bold;'>50.0</td><td style='padding:6px 8px;color:#ef4444;font-weight:bold;'>Tukey Inner Fence - Batas Anomali</td></tr>"
-                    "<tr><td style='padding:6px 8px;text-align:center;'>2.0</td><td style='padding:6px 8px;text-align:center;'>29.2</td><td style='padding:6px 8px;color:#ef4444;'>Anomali Signifikan</td></tr>"
-                    "<tr><td style='padding:6px 8px;text-align:center;'>2.5</td><td style='padding:6px 8px;text-align:center;'>14.6</td><td style='padding:6px 8px;color:#7f1d1d;'>Anomali Berat</td></tr>"
-                    "<tr style='background:#fef2f2;'><td style='padding:6px 8px;text-align:center;font-weight:bold;'>3.0 (Outer Fence)</td><td style='padding:6px 8px;text-align:center;font-weight:bold;'>6.3</td><td style='padding:6px 8px;color:#7f1d1d;font-weight:bold;'>Tukey Outer Fence - Anomali Ekstrem</td></tr>"
-                    "</table>"
-                    "<div style='margin-top:8px;font-size:0.8rem;color:#64748b;'>"
-                    "<b>Referensi:</b><br>"
-                    " Tukey, J.W. (1977). <i>Exploratory Data Analysis</i>. Addison-Wesley.<br>"
-                    " Iglewicz, B. & Hoaglin, D.C. (1993). <i>How to Detect and Handle Outliers</i>. ASQC Quality Press.<br>"
-                    " Hubert, M. & Vandervieren, E. (2008). An Adjusted Boxplot for Skewed Distributions. <i>Comp. Stat. & Data Analysis</i>, 52(12)."
-                    "</div>"
-                    "</details>"
-                )
-                st.markdown(tier_html, unsafe_allow_html=True)
+                if is_anomali:
+                    dir_label = "BAWAH (Terlahu Murah)" if current_bsk < lb_calc else "ATAS (Terlalu Mahal / Pemborosan)"
+                    st.warning(
+                        f"⚠️ **Terdeteksi Outlier {dir_label}!** BSK Anda ({format_currency(current_bsk)}) "
+                        f"berada di luar rentang wajar ({format_currency(lb_calc)} s/d {format_currency(ub_calc)})."
+                    )
             
+            # --- Visualisasi Plotly ---
             if len(universal_df) >= 3:
                 import plotly.graph_objects as go
                 
-                st.markdown("##### Visualisasi Box Plot - Deteksi Anomali IQR")
+                st.markdown("##### Visualisasi Distribusi BSK - Asymmetric Tukey's Fences")
                 
-                bsk_vals = universal_df["bsk"].values
-                q1_v = np.percentile(bsk_vals, 25)
-                q3_v = np.percentile(bsk_vals, 75)
-                iqr_v = q3_v - q1_v
-                lb_v = q1_v - 1.5 * iqr_v
-                ub_v = q3_v + 1.5 * iqr_v
-                current_bsk = row.get("bsk", 0)
-                is_outlier_cur = current_bsk < lb_v or current_bsk > ub_v
+                bsk_arr   = universal_df["bsk"].values
+                q1_calc   = np.percentile(bsk_arr, 25)
+                q3_calc   = np.percentile(bsk_arr, 75)
+                iqr_calc  = q3_calc - q1_calc
+                ub_calc   = q3_calc + 1.5 * iqr_calc
+                lb_calc   = q1_calc - 0.2 * iqr_calc
+                current_bsk  = row.get("bsk", 0)
+                is_outlier_cur = bool(current_bsk < lb_calc or current_bsk > ub_calc)
                 
                 fig = go.Figure()
                 
-                # Built-in horizontal box plot (otomatis rapi)
-                fig.add_trace(go.Box(
-                    x=bsk_vals,
-                    name="",
-                    marker_color="#94a3b8",
-                    line_color="#1e3a8a",
-                    fillcolor="rgba(30,58,138,0.1)",
-                    boxpoints="all",
-                    jitter=0.6,
-                    pointpos=0,
-                    marker=dict(size=5, opacity=0.4, color="#94a3b8"),
-                    hoverinfo="x",
-                    showlegend=False
-                ))
+                x_range = max(bsk_arr.max(), ub_calc) * 1.15
+                x_min   = min(0.0, lb_calc * 1.15) if lb_calc < 0 else 0.0
                 
-                # Highlight: data yang sedang diuji
-                hl_color = "#dc2626" if is_outlier_cur else "#1e3a8a"
-                fig.add_trace(go.Scatter(
-                    x=[current_bsk], y=[""],
-                    mode='markers',
-                    marker=dict(size=20, color=hl_color, symbol="diamond",
-                                line=dict(width=3, color="white")),
-                    name=f"{row['pemda_label']}",
-                    hovertemplate=f"<b>{row['pemda_label']}</b><br>BSK: {format_currency(current_bsk)}<br>{'[!] ANOMALI' if is_outlier_cur else '[OK] NORMAL'}<extra></extra>",
-                    showlegend=True
-                ))
+                # Rectangles for safe/unsafe zones
+                if lb_calc > x_min:
+                    fig.add_shape(type="rect", x0=x_min, x1=lb_calc, y0=-0.5, y1=0.5,
+                                  fillcolor="rgba(239,68,68,0.08)", line_width=0, layer="below")
+                fig.add_shape(type="rect", x0=lb_calc, x1=ub_calc, y0=-0.5, y1=0.5,
+                              fillcolor="rgba(74,222,128,0.12)", line_width=0, layer="below")
+                fig.add_shape(type="rect", x0=ub_calc, x1=x_range, y0=-0.5, y1=0.5,
+                              fillcolor="rgba(239,68,68,0.08)", line_width=0, layer="below")
                 
-                # Batas IQR (garis vertikal)
-                fig.add_vline(x=lb_v, line_dash="dot", line_color="#f97316", line_width=2)
-                fig.add_vline(x=ub_v, line_dash="dot", line_color="#f97316", line_width=2)
+                # Scatter points
+                for _, r_u in universal_df.iterrows():
+                    bsk_i = r_u["bsk"]
+                    is_out = bool(bsk_i < lb_calc or bsk_i > ub_calc)
+                    is_self = bool((r_u["pemda_label"] == row["pemda_label"]) and (r_u["tahun"] == row["tahun"]))
+                    color = ("#dc2626" if is_out else "#3b82f6") if not is_self else ("#7c3aed" if not is_out else "#dc2626")
+                    symbol = "diamond" if is_self else "circle"
+                    size   = 18 if is_self else 8
+                    fig.add_trace(go.Scatter(
+                        x=[bsk_i], y=[0],
+                        mode="markers",
+                        marker=dict(size=size, color=color, symbol=symbol,
+                                    line=dict(width=2 if is_self else 1, color="white")),
+                        name=f"{r_u['pemda_label']} {int(r_u['tahun'])}",
+                        hovertemplate=(
+                            f"<b>{r_u['pemda_label']} {int(r_u['tahun'])}</b><br>"
+                            f"BSK: {format_currency(bsk_i)}<br>"
+                            f"{'⚠️ ANOMALI' if is_out else '✅ Normal'}"
+                            "<extra></extra>"
+                        ),
+                        showlegend=is_self
+                    ))
                 
-                fig.add_annotation(x=lb_v, y=1.15, yref="paper",
-                    text=f"Batas Bawah<br>{format_currency(lb_v)}",
-                    showarrow=False, font=dict(size=9, color="#f97316"))
-                fig.add_annotation(x=ub_v, y=1.15, yref="paper",
-                    text=f"Batas Atas<br>{format_currency(ub_v)}",
-                    showarrow=False, font=dict(size=9, color="#f97316"))
+                # Fence boundary lines
+                fig.add_vline(x=lb_calc, line_dash="dash", line_color="#2563eb", line_width=2.5,
+                              annotation_text=f"Batas Bawah (k₂=0.2)<br>{format_currency(lb_calc)}",
+                              annotation_position="top left", annotation_font=dict(size=10, color="#2563eb"))
+                fig.add_vline(x=ub_calc, line_dash="dash", line_color="#dc2626", line_width=2.5,
+                              annotation_text=f"Batas Atas (k₁=1.5)<br>{format_currency(ub_calc)}",
+                              annotation_position="top right", annotation_font=dict(size=10, color="#dc2626"))
                 
                 fig.update_layout(
-                    title="Distribusi BSK - Seluruh Pemda & Tahun",
+                    title=dict(text="Distribusi BSK — Pagar Asimetris (Biru=Bawah k₂=0.2 | Merah=Atas k₁=1.5)", font=dict(size=13)),
                     xaxis_title="Biaya Satuan Kinerja (BSK)",
                     plot_bgcolor="white",
                     height=280,
-                    margin=dict(t=70, b=40, l=20, r=20),
-                    xaxis=dict(gridcolor="#e2e8f0"),
-                    yaxis=dict(showticklabels=False),
-                    legend=dict(orientation="h", yanchor="bottom", y=-0.4, font=dict(size=11))
+                    margin=dict(t=80, b=40, l=20, r=20),
+                    xaxis=dict(gridcolor="#e2e8f0", tickformat=","),
+                    yaxis=dict(visible=False, range=[-1, 1]),
+                    showlegend=True,
+                    legend=dict(orientation="h", yanchor="bottom", y=-0.45, font=dict(size=11))
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
-                st.caption("* = Data yang sedang diuji    Titik abu-abu = Data pembanding    Garis oranye = Batas IQR")
+                st.caption(
+                    "◆ = Daerah yang diuji | ● = Daerah lain | "
+                    "Zona Hijau = Batas Aman | Zona Merah = Anomali"
+                )
                 
-                # Tabel komparasi
+                # Comparison table
                 st.markdown("##### Tabel Komparasi Universal")
                 display_univ = universal_df[["pemda_label", "tahun", "pagu", "target", "bsk"]].copy()
-                
-                display_univ["is_outlier"] = (display_univ["bsk"] < lb_v) | (display_univ["bsk"] > ub_v)
-                is_self_mask = (display_univ["pemda_label"] == row["pemda_label"]) & (display_univ["tahun"] == row["tahun"])
-                
-                display_univ["status"] = display_univ["is_outlier"].apply(lambda x: "[!] Anomali" if x else "[OK] Normal")
-                display_univ.loc[is_self_mask, "pemda_label"] = display_univ.loc[is_self_mask, "pemda_label"] + " <- INI"
-                
-                display_univ["pagu"] = display_univ["pagu"].apply(format_currency)
-                display_univ["bsk"] = display_univ["bsk"].apply(format_currency)
+                display_univ["is_outlier"] = (display_univ["bsk"] < lb_calc) | (display_univ["bsk"] > ub_calc)
+                is_self_mask = ((display_univ["pemda_label"] == row["pemda_label"]) &
+                                (display_univ["tahun"] == row["tahun"]))
+                display_univ["status"] = display_univ["is_outlier"].apply(
+                    lambda x: "⚠️ Anomali" if x else "✅ Normal"
+                )
+                display_univ.loc[is_self_mask, "pemda_label"] = (
+                    display_univ.loc[is_self_mask, "pemda_label"] + " ← INI"
+                )
+                display_univ["pagu"]  = display_univ["pagu"].apply(format_currency)
+                display_univ["bsk"]   = display_univ["bsk"].apply(format_currency)
                 display_univ["target"] = display_univ["target"].apply(lambda x: format_number(x, 2))
                 display_univ["tahun"] = display_univ["tahun"].apply(lambda x: int(x))
-                
-                display_univ = display_univ[["pemda_label", "tahun", "pagu", "target", "bsk", "status"]]
+                display_univ = display_univ[["pemda_label","tahun","pagu","target","bsk","status"]]
                 display_univ.rename(columns={
                     "pemda_label": "Pemda", "tahun": "Tahun", "pagu": "Pagu",
                     "target": "Target", "bsk": "BSK", "status": "Status"
                 }, inplace=True)
-                
-                # Add No. column
-                display_univ.insert(0, "No.", range(1, len(display_univ) + 1))
-                
+                display_univ.insert(0, "No.", range(1, len(display_univ)+1))
                 st.dataframe(display_univ, use_container_width=True, hide_index=True)
             else:
                 st.info("Data pembanding universal terlalu sedikit untuk visualisasi statistik.")
-
