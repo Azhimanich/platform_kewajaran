@@ -1,71 +1,219 @@
 """
-Dimensi 3 - Kewajaran Kinerja (Analisis Prognosis).
-Mengevaluasi kewajaran target usulan berdasarkan efisiensi historis.
+Dimensi 3 - Kewajaran Kinerja (Matriks Efisiensi × Efektivitas).
+
+Mengevaluasi kewajaran kinerja sub-kegiatan menggunakan dua sumbu independen:
+  1. Efisiensi (Input/Proses): Pagu saat ini vs rata-rata Pagu historis
+     → "Apakah anggaran yang diusulkan wajar dibanding historis?"
+  2. Efektivitas (Output/Hasil): Target saat ini vs Target Prognosis
+     → "Apakah target output sesuai kemampuan historis?"
+
+Klasifikasi 4 Kuadran (Tabel 3.5 - Matriks Evaluasi Kondisi Kinerja):
+  ┌─────────────────────┬────────────────────────┐
+  │ TIDAK WAJAR/BOROS   │       IDEAL            │
+  │ Input↑ Output↓      │  Input↑ Output↑        │
+  ├─────────────────────┼────────────────────────┤
+  │   KURANG DANA       │   SANGAT EFISIEN       │
+  │ Input↓ Output↓      │  Input↓ Output↑        │
+  └─────────────────────┴────────────────────────┘
+
 Tidak ada hardcode - jika tidak ada data realisasi historis, skor = NaN.
 """
 import pandas as pd
 import numpy as np
 
+# Threshold klasifikasi
+EFISIENSI_THRESHOLD = 1.2   # pagu/hist_pagu > 1.2 → Efisiensi Rendah (boros)
+EFEKTIVITAS_TINGGI = 0.8    # target/prognosis >= 0.8 → Efektivitas Tinggi
+EFEKTIVITAS_SEDANG = 0.5    # target/prognosis >= 0.5 → Efektivitas Sedang
+
+# Gaussian Decay sigma (calibrated: ratio=2 atau ratio=0.5 → score ≈ 50)
+SIGMA_R = np.log(2.0) / np.sqrt(2 * np.log(2))  # ≈ 0.5888
+
+
 def calculate(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return df
-        
+
     res = df.copy()
+
+    # ── Init output columns ──
     res["dimensi_3_score"] = np.nan
     res["efficiency_riil"] = np.nan
     res["hist_efficiency_avg"] = np.nan
+    res["hist_pagu_avg"] = np.nan
     res["prognosis_output"] = np.nan
-    
-    # 1. Hitung Efisiensi Riil untuk baris yang memiliki data realisasi
+    res["efisiensi_ratio"] = np.nan
+    res["efektivitas_ratio"] = np.nan
+    res["efisiensi_label"] = ""
+    res["efektivitas_label"] = ""
+    res["dimensi_3_kondisi"] = ""
+    res["score_efisiensi"] = np.nan
+    res["score_efektivitas"] = np.nan
+
+    # ── Step 1: Hitung Efisiensi Riil (dari data realisasi historis) ──
     valid_real = (res["realisasi_anggaran"].notna()) & (res["realisasi_anggaran"] > 0)
     res.loc[valid_real, "efficiency_riil"] = (
         res.loc[valid_real, "realisasi_target"] / res.loc[valid_real, "realisasi_anggaran"]
     )
-    
-    # 2. Untuk setiap baris, hitung rata-rata efisiensi dari tahun SEBELUMNYA (strictly <)
-    valid_eff = res["efficiency_riil"].notna() & (res["efficiency_riil"] > 0)
-    hist_df = res[valid_eff][["kodepemda", "kodesubkegiatan", "satuan", "tahun", "efficiency_riil"]]
-    
+
     groupby_cols = ["kodepemda", "kodesubkegiatan", "satuan", "tahun"]
+    group_key = ["kodepemda", "kodesubkegiatan", "satuan"]
     skeleton = res[groupby_cols].drop_duplicates()
-    
+
+    # ── Step 2a: hist_efficiency_avg (rata-rata efisiensi tahun SEBELUMNYA) ──
+    valid_eff = res["efficiency_riil"].notna() & (res["efficiency_riil"] > 0)
+    hist_df = res[valid_eff][groupby_cols + ["efficiency_riil"]]
+
     if not hist_df.empty:
         hist_agg = hist_df.groupby(groupby_cols)["efficiency_riil"].agg(['sum', 'count']).reset_index()
         yearly_stats = pd.merge(skeleton, hist_agg, on=groupby_cols, how="left")
         yearly_stats["sum"] = yearly_stats["sum"].fillna(0)
         yearly_stats["count"] = yearly_stats["count"].fillna(0)
-        
+
         yearly_stats = yearly_stats.sort_values(by=groupby_cols)
-        
-        yearly_stats["cum_sum"] = yearly_stats.groupby(["kodepemda", "kodesubkegiatan", "satuan"])["sum"].cumsum()
-        yearly_stats["cum_count"] = yearly_stats.groupby(["kodepemda", "kodesubkegiatan", "satuan"])["count"].cumsum()
-        
-        yearly_stats["hist_sum"] = yearly_stats.groupby(["kodepemda", "kodesubkegiatan", "satuan"])["cum_sum"].shift(1)
-        yearly_stats["hist_count"] = yearly_stats.groupby(["kodepemda", "kodesubkegiatan", "satuan"])["cum_count"].shift(1)
-        
+
+        yearly_stats["cum_sum"] = yearly_stats.groupby(group_key)["sum"].cumsum()
+        yearly_stats["cum_count"] = yearly_stats.groupby(group_key)["count"].cumsum()
+
+        yearly_stats["hist_sum"] = yearly_stats.groupby(group_key)["cum_sum"].shift(1)
+        yearly_stats["hist_count"] = yearly_stats.groupby(group_key)["cum_count"].shift(1)
+
         yearly_stats["hist_efficiency_avg"] = yearly_stats["hist_sum"] / yearly_stats["hist_count"]
-        
+
         res = res.drop(columns=["hist_efficiency_avg"], errors="ignore")
-        res = res.merge(yearly_stats[["kodepemda", "kodesubkegiatan", "satuan", "tahun", "hist_efficiency_avg"]],
-                        on=groupby_cols,
-                        how="left")
-                        
-        # 3. Prognosis Output
-        valid_calc = res["pagu"].notna() & (res["pagu"] > 0) & res["hist_efficiency_avg"].notna() & (res["hist_efficiency_avg"] > 0)
-        
-        if valid_calc.any():
-            prognosis = res.loc[valid_calc, "pagu"] * res.loc[valid_calc, "hist_efficiency_avg"]
-            res.loc[valid_calc, "prognosis_output"] = prognosis
-            
-            # Locke & Latham's (1990) SMART Goal Setting and Performance Realism model:
-            # Score = 100 * exp(-0.5 * (ln(ratio) / sigma_r)^2)
-            # Calibrated so that a 50% under-achievement (ratio = 0.5) or 200% unrealistic promise (ratio = 2.0) yields exactly 50.0.
-            # sigma_r = ln(2.0) / sqrt(2 * ln(2))  0.5888
-            sigma_r = np.log(2.0) / np.sqrt(2 * np.log(2))
-            valid_target = valid_calc & res["target"].notna() & (res["target"] > 0) & (res["prognosis_output"] > 0)
-            ratio = res.loc[valid_target, "target"] / res.loc[valid_target, "prognosis_output"]
-            score = 100.0 * np.exp(-0.5 * (np.log(ratio) / sigma_r) ** 2)
-            
-            res.loc[valid_target, "dimensi_3_score"] = score
-    
+        res = res.merge(
+            yearly_stats[groupby_cols + ["hist_efficiency_avg"]],
+            on=groupby_cols, how="left"
+        )
+
+    # ── Step 2b: hist_pagu_avg (rata-rata pagu tahun SEBELUMNYA) ──
+    valid_pagu = res["pagu"].notna() & (res["pagu"] > 0)
+    hist_pagu_df = res[valid_pagu][groupby_cols + ["pagu"]]
+
+    if not hist_pagu_df.empty:
+        pagu_agg = hist_pagu_df.groupby(groupby_cols)["pagu"].agg(['sum', 'count']).reset_index()
+        yearly_pagu = pd.merge(skeleton, pagu_agg, on=groupby_cols, how="left")
+        yearly_pagu["sum"] = yearly_pagu["sum"].fillna(0)
+        yearly_pagu["count"] = yearly_pagu["count"].fillna(0)
+
+        yearly_pagu = yearly_pagu.sort_values(by=groupby_cols)
+
+        yearly_pagu["cum_sum"] = yearly_pagu.groupby(group_key)["sum"].cumsum()
+        yearly_pagu["cum_count"] = yearly_pagu.groupby(group_key)["count"].cumsum()
+
+        yearly_pagu["hist_sum"] = yearly_pagu.groupby(group_key)["cum_sum"].shift(1)
+        yearly_pagu["hist_count"] = yearly_pagu.groupby(group_key)["cum_count"].shift(1)
+
+        yearly_pagu["hist_pagu_avg"] = yearly_pagu["hist_sum"] / yearly_pagu["hist_count"]
+
+        res = res.drop(columns=["hist_pagu_avg"], errors="ignore")
+        res = res.merge(
+            yearly_pagu[groupby_cols + ["hist_pagu_avg"]],
+            on=groupby_cols, how="left"
+        )
+
+    # ── Step 3: Prognosis Output ──
+    valid_prog = (
+        res["pagu"].notna() & (res["pagu"] > 0) &
+        res["hist_efficiency_avg"].notna() & (res["hist_efficiency_avg"] > 0)
+    )
+    if valid_prog.any():
+        res.loc[valid_prog, "prognosis_output"] = (
+            res.loc[valid_prog, "pagu"] * res.loc[valid_prog, "hist_efficiency_avg"]
+        )
+
+    # ── Step 4: Efektivitas Ratio (target / prognosis) ──
+    valid_efk = (
+        valid_prog &
+        res["target"].notna() & (res["target"] > 0) &
+        res["prognosis_output"].notna() & (res["prognosis_output"] > 0)
+    )
+    if valid_efk.any():
+        res.loc[valid_efk, "efektivitas_ratio"] = (
+            res.loc[valid_efk, "target"] / res.loc[valid_efk, "prognosis_output"]
+        )
+
+    # ── Step 5: Efisiensi Ratio (pagu / hist_pagu_avg) ──
+    valid_efs = (
+        res["pagu"].notna() & (res["pagu"] > 0) &
+        res["hist_pagu_avg"].notna() & (res["hist_pagu_avg"] > 0)
+    )
+    if valid_efs.any():
+        res.loc[valid_efs, "efisiensi_ratio"] = (
+            res.loc[valid_efs, "pagu"] / res.loc[valid_efs, "hist_pagu_avg"]
+        )
+
+    # ── Step 6: Labels ──
+    efs = res["efisiensi_ratio"]
+    efk = res["efektivitas_ratio"]
+
+    # Efisiensi: pagu/hist_pagu ≤ threshold → Tinggi (hemat), > threshold → Rendah (boros)
+    res.loc[efs.notna() & (efs <= EFISIENSI_THRESHOLD), "efisiensi_label"] = "Tinggi"
+    res.loc[efs.notna() & (efs > EFISIENSI_THRESHOLD), "efisiensi_label"] = "Rendah"
+
+    # Efektivitas: target/prognosis
+    res.loc[efk.notna() & (efk >= EFEKTIVITAS_TINGGI), "efektivitas_label"] = "Tinggi"
+    res.loc[efk.notna() & (efk >= EFEKTIVITAS_SEDANG) & (efk < EFEKTIVITAS_TINGGI), "efektivitas_label"] = "Sedang"
+    res.loc[efk.notna() & (efk < EFEKTIVITAS_SEDANG), "efektivitas_label"] = "Rendah"
+
+    # ── Step 7: Klasifikasi Kuadran ──
+    efs_t = res["efisiensi_label"] == "Tinggi"
+    efs_r = res["efisiensi_label"] == "Rendah"
+    efk_t = res["efektivitas_label"] == "Tinggi"
+    efk_s = res["efektivitas_label"] == "Sedang"
+    efk_r = res["efektivitas_label"] == "Rendah"
+
+    has_efs = efs.notna()
+    has_efk = efk.notna()
+    both = has_efs & has_efk
+
+    # Matriks penuh (kedua sumbu tersedia)
+    res.loc[both & efs_t & efk_t, "dimensi_3_kondisi"] = "Ideal"
+    res.loc[both & efs_t & efk_s, "dimensi_3_kondisi"] = "Sangat Efisien"
+    res.loc[both & efs_t & efk_r, "dimensi_3_kondisi"] = "Kurang Dana"
+    res.loc[both & efs_r & efk_r, "dimensi_3_kondisi"] = "Tidak Wajar/Boros"
+    res.loc[both & efs_r & efk_s, "dimensi_3_kondisi"] = "Tidak Wajar/Boros"
+    res.loc[both & efs_r & efk_t, "dimensi_3_kondisi"] = "Ideal"
+
+    # Hanya efektivitas tersedia (tanpa data hist_pagu)
+    only_efk = ~has_efs & has_efk
+    res.loc[only_efk & efk_t, "dimensi_3_kondisi"] = "Ideal"
+    res.loc[only_efk & efk_s, "dimensi_3_kondisi"] = "Sangat Efisien"
+    res.loc[only_efk & efk_r, "dimensi_3_kondisi"] = "Tidak Wajar/Boros"
+
+    # ── Step 8: Skor (Asymmetric Gaussian Decay) ──
+    # Efisiensi: hanya penalti jika ratio > 1 (budget lebih tinggi dari historis)
+    valid_se = has_efs & (efs > 0)
+    if valid_se.any():
+        efs_vals = efs[valid_se].values
+        score_efs = np.where(
+            efs_vals <= 1.0,
+            100.0,
+            100.0 * np.exp(-0.5 * (np.log(efs_vals) / SIGMA_R) ** 2)
+        )
+        res.loc[valid_se, "score_efisiensi"] = score_efs
+
+    # Efektivitas: hanya penalti jika ratio < 1 (target lebih rendah dari prognosis)
+    valid_sek = has_efk & (efk > 0)
+    if valid_sek.any():
+        efk_vals = efk[valid_sek].values
+        score_efk = np.where(
+            efk_vals >= 1.0,
+            100.0,
+            100.0 * np.exp(-0.5 * (np.log(efk_vals) / SIGMA_R) ** 2)
+        )
+        res.loc[valid_sek, "score_efektivitas"] = score_efk
+
+    # Skor gabungan
+    has_both_scores = res["score_efisiensi"].notna() & res["score_efektivitas"].notna()
+    has_only_efk_score = res["score_efisiensi"].isna() & res["score_efektivitas"].notna()
+    has_only_efs_score = res["score_efisiensi"].notna() & res["score_efektivitas"].isna()
+
+    res.loc[has_both_scores, "dimensi_3_score"] = (
+        0.5 * res.loc[has_both_scores, "score_efisiensi"] +
+        0.5 * res.loc[has_both_scores, "score_efektivitas"]
+    )
+    res.loc[has_only_efk_score, "dimensi_3_score"] = res.loc[has_only_efk_score, "score_efektivitas"]
+    res.loc[has_only_efs_score, "dimensi_3_score"] = res.loc[has_only_efs_score, "score_efisiensi"]
+
     return res

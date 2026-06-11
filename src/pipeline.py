@@ -18,7 +18,7 @@ def get_processed_data() -> pd.DataFrame:
     """
     Menjalankan seluruh pipeline data dari raw CSV hingga kalkulasi skor akhir.
     """
-    # Cache invalidation trigger: v25 (Dimensi 2 - Non-LOO Regional comparison)
+    # Cache invalidation trigger: v26 (Dimensi 3 - Matriks Efisiensi x Efektivitas)
     df = load_raw()
     
     if df.empty:

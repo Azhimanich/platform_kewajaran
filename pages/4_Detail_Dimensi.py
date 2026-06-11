@@ -568,98 +568,174 @@ if selected_sub:
                     st.caption("* = Daerah ini     = Daerah lain     Wajar (|Z|<1)     Perlu Perhatian (1<=|Z|<2)     Outlier (|Z|>=2)")
                 
         # DIMENSI 3
-        st.subheader("Dimensi 3: Kewajaran Kinerja (Analisis Prognosis)")
+        st.subheader("Dimensi 3: Kewajaran Kinerja (Matriks Efisiensi × Efektivitas)")
         with st.container(border=True):
             d3_score = row.get("dimensi_3_score", pd.NA)
+            efs_ratio = row.get("efisiensi_ratio", pd.NA)
+            efk_ratio = row.get("efektivitas_ratio", pd.NA)
+            efs_label = row.get("efisiensi_label", "")
+            efk_label = row.get("efektivitas_label", "")
+            kondisi_kinerja = row.get("dimensi_3_kondisi", "")
+            score_efs = row.get("score_efisiensi", pd.NA)
+            score_efk = row.get("score_efektivitas", pd.NA)
             
             st.markdown(r"""
-            **Metodologi - Goal Setting and Performance Realism (Locke & Latham, 1990):**  
-            Mengevaluasi realistis atau tidaknya target usulan tahun berjalan berdasarkan prognosis kemampuan teknis historis (efisiensi riil dari tahun-tahun sebelumnya). Deviasi dihitung menggunakan **Log-Normal Goal Realism Function**.
+            **Metodologi - Matriks Efisiensi & Efektivitas Kinerja (Goal Setting & Resource Allocation):**  
+            Mengevaluasi kewajaran kinerja sub-kegiatan berdasarkan dua sumbu independen:
+            1. **Efisiensi (Input/Proses):** Membandingkan pagu anggaran yang diusulkan saat ini terhadap rata-rata pagu historis.
+            2. **Efektivitas (Output/Hasil):** Membandingkan target output yang diusulkan terhadap target prognosis (berdasarkan produktivitas historis).
             
-            **Formula Log-Normal Goal Realism:**
-            $$\text{Score} = 100 \times \exp\left(-\frac{1}{2}\left(\frac{\ln(r)}{\sigma_r}\right)^2\right), \quad r = \frac{\text{Target Usulan}}{\text{Target Prognosis}}$$
-            $$\sigma_r = \frac{\ln(2{,}0)}{\sqrt{2 \ln 2}} \approx 0{,}589$$
-            
-            *Konstanta $\sigma_r$ dikalibrasi agar rasio target $r = 0{,}50$ (tidak ambisius / malas) atau $r = 2{,}0$ (terlalu ambisius / tidak realistis / over-promising) menghasilkan skor tepat 50.*
+            Kombinasi kedua rasio ini mengklasifikasikan usulan kinerja ke dalam 4 kuadran: **Ideal**, **Sangat Efisien**, **Kurang Dana**, atau **Tidak Wajar/Boros**.
             """)
             
-            c1, c2, c3, c4 = st.columns(4)
+            # Menampilkan Status & Skor
+            col_status, col_score = st.columns([2, 1])
+            with col_status:
+                if kondisi_kinerja:
+                    badge_color = "#22c55e" if kondisi_kinerja == "Ideal" else "#0284c7" if kondisi_kinerja == "Sangat Efisien" else "#f59e0b" if kondisi_kinerja == "Kurang Dana" else "#ef4444"
+                    st.markdown(f"""
+                    <div style='padding:15px; border-radius:10px; background:{badge_color}15; border:1px solid {badge_color}; text-align:center;'>
+                        <span style='font-size:0.9rem; color:#64748b; text-transform:uppercase;'>Kondisi Kinerja</span><br>
+                        <b style='font-size:1.8rem; color:{badge_color};'>{kondisi_kinerja}</b>
+                    </div>
+                    """, unsafe_allow_html=True)
+            with col_score:
+                if pd.notna(d3_score):
+                    st.markdown(f"""
+                    <div style='padding:15px; border-radius:10px; background:#f1f5f9; border:1px solid #e2e8f0; text-align:center;'>
+                        <span style='font-size:0.9rem; color:#64748b; text-transform:uppercase;'>Skor Dimensi 3</span><br>
+                        <b style='font-size:1.8rem; color:#1e3a8a;'>{d3_score:.1f} <span style='font-size:1rem; font-weight:normal; color:#64748b;'>/ 100</span></b>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.metric("Skor Dimensi 3", "Data Minim")
+
+            st.write("---")
+            
+            # Row 1: Efisiensi (Input)
+            st.markdown("##### Sumbu Efisiensi (Input & Anggaran)")
+            c1_1, c1_2, c1_3, c1_4 = st.columns(4)
+            pagu_val = row.get("pagu", pd.NA)
+            hist_pagu_avg = row.get("hist_pagu_avg", pd.NA)
+            c1_1.metric("Pagu Usulan", format_currency(pagu_val) if pd.notna(pagu_val) else "-")
+            c1_2.metric("Rata-rata Pagu Historis", format_currency(hist_pagu_avg) if pd.notna(hist_pagu_avg) else "-")
+            c1_3.metric("Rasio Efisiensi", f"{efs_ratio:.2f}x" if pd.notna(efs_ratio) else "-")
+            c1_4.metric("Skor Efisiensi (Input)", f"{score_efs:.1f}" if pd.notna(score_efs) else "-")
+            
+            # Row 2: Efektivitas (Output)
+            st.markdown("##### Sumbu Efektivitas (Output & Target)")
+            c2_1, c2_2, c2_3, c2_4 = st.columns(4)
             avg_e = row.get("hist_efficiency_avg", pd.NA)
             prog_out = row.get("prognosis_output", pd.NA)
             curr_target = row.get("target", 0)
-            
-            # Tampilkan efisiensi sesuai dengan format aslinya
-            c1.metric("Rata2 Efisiensi Riil", f"{avg_e:.10f}" if pd.notna(avg_e) else "-")
-            c2.metric("Target Prognosis", format_number(prog_out, 2) if pd.notna(prog_out) else "-")
-            c3.metric("Target Usulan", format_number(curr_target, 2))
-            
-            if pd.isna(d3_score):
-                c4.metric("Skor Dimensi 3", "Data Minim")
-            else:
-                c4.metric("Skor Dimensi 3", f"{format_number(d3_score, 1)} / 100")
-            
+            c2_1.metric("Target Usulan", format_number(curr_target, 2))
+            c2_2.metric("Target Prognosis", format_number(prog_out, 2) if pd.notna(prog_out) else "-")
+            c2_3.metric("Rasio Efektivitas", f"{efk_ratio:.2f}x" if pd.notna(efk_ratio) else "-")
+            c2_4.metric("Skor Efektivitas (Output)", f"{score_efk:.1f}" if pd.notna(score_efk) else "-")
+
+            # Matriks Visual 2x3 Grid
+            if kondisi_kinerja and pd.notna(efs_ratio) and pd.notna(efk_ratio):
+                # Hitung cell highlight styles
+                def get_cell_style(is_active, base_border, base_bg, base_color):
+                    if is_active:
+                        return f"padding: 12px; border-radius: 6px; border: 3px solid {base_border}; background: {base_bg}; color: {base_color}; text-align: center; box-shadow: 0 0 15px {base_border}80; font-weight: bold; opacity: 1.0; transform: scale(1.02);"
+                    else:
+                        return f"padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; background: #ffffff; color: #94a3b8; text-align: center; opacity: 0.45; font-weight: normal;"
+
+                cell_1_active = (efs_label == "Rendah" and efk_label == "Rendah")
+                cell_2_active = (efs_label == "Rendah" and efk_label == "Sedang")
+                cell_3_active = (efs_label == "Rendah" and efk_label == "Tinggi")
+                cell_4_active = (efs_label == "Tinggi" and efk_label == "Rendah")
+                cell_5_active = (efs_label == "Tinggi" and efk_label == "Sedang")
+                cell_6_active = (efs_label == "Tinggi" and efk_label == "Tinggi")
+
+                style_cell_1 = get_cell_style(cell_1_active, "#ef4444", "#fee2e2", "#991b1b") # Tidak Wajar/Boros
+                style_cell_2 = get_cell_style(cell_2_active, "#ef4444", "#fee2e2", "#991b1b") # Tidak Wajar/Boros
+                style_cell_3 = get_cell_style(cell_3_active, "#22c55e", "#dcfce7", "#166534") # Ideal (anggaran naik tapi diimbangi target memadai)
+                style_cell_4 = get_cell_style(cell_4_active, "#f59e0b", "#fef3c7", "#92400e") # Kurang Dana
+                style_cell_5 = get_cell_style(cell_5_active, "#0284c7", "#e0f2fe", "#075985") # Sangat Efisien
+                style_cell_6 = get_cell_style(cell_6_active, "#22c55e", "#dcfce7", "#166534") # Ideal
+
+                matrix_html = f"""
+                <div style="margin: 25px 0; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+                    <h5 style="margin-top:0; color: #1e293b; text-align: center; font-weight: 700; font-size: 0.95rem; letter-spacing: 0.05em; text-transform: uppercase;">Posisi Sub-Kegiatan pada Matriks Kinerja</h5>
+                    <div style="display: grid; grid-template-columns: 140px 1fr 1fr 1fr; gap: 12px; align-items: center; max-width: 800px; margin: 20px auto; font-family: sans-serif;">
+                        <!-- Header Row -->
+                        <div></div>
+                        <div style="text-align: center; font-weight: bold; color: #475569; font-size: 0.8rem; background: #e2e8f0; padding: 8px; border-radius: 4px;">Efektivitas Rendah<br><span style="font-weight:normal; font-size:0.7rem;">(Target &lt; 50% Prognosis)</span></div>
+                        <div style="text-align: center; font-weight: bold; color: #475569; font-size: 0.8rem; background: #e2e8f0; padding: 8px; border-radius: 4px;">Efektivitas Sedang<br><span style="font-weight:normal; font-size:0.7rem;">(Target 50% - 80%)</span></div>
+                        <div style="text-align: center; font-weight: bold; color: #475569; font-size: 0.8rem; background: #e2e8f0; padding: 8px; border-radius: 4px;">Efektivitas Tinggi<br><span style="font-weight:normal; font-size:0.7rem;">(Target &ge; 80% Prognosis)</span></div>
+                        
+                        <!-- Row 1: Efisiensi Rendah -->
+                        <div style="font-weight: bold; color: #475569; font-size: 0.8rem; text-align: right; padding-right: 10px; background: #f1f5f9; padding: 8px; border-radius: 4px;">Efisiensi Rendah<br><span style="font-weight:normal; font-size:0.7rem;">(Pagu &gt; 1.2x Historis)</span></div>
+                        <div style="{style_cell_1}">
+                            <div style="font-size:0.85rem;">Tidak Wajar / Boros</div>
+                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(Anggaran Boros, Output Rendah)</div>
+                        </div>
+                        <div style="{style_cell_2}">
+                            <div style="font-size:0.85rem;">Tidak Wajar / Boros</div>
+                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(Anggaran Boros, Output Sedang)</div>
+                        </div>
+                        <div style="{style_cell_3}">
+                            <div style="font-size:0.85rem;">Ideal</div>
+                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(Anggaran Naik & Output Tinggi)</div>
+                        </div>
+
+                        <!-- Row 2: Efisiensi Tinggi -->
+                        <div style="font-weight: bold; color: #475569; font-size: 0.8rem; text-align: right; padding-right: 10px; background: #f1f5f9; padding: 8px; border-radius: 4px;">Efisiensi Tinggi<br><span style="font-weight:normal; font-size:0.7rem;">(Pagu &le; 1.2x Historis)</span></div>
+                        <div style="{style_cell_4}">
+                            <div style="font-size:0.85rem;">Kurang Dana</div>
+                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(Anggaran Rendah, Output Rendah)</div>
+                        </div>
+                        <div style="{style_cell_5}">
+                            <div style="font-size:0.85rem;">Sangat Efisien</div>
+                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(Anggaran Rendah, Output Sedang)</div>
+                        </div>
+                        <div style="{style_cell_6}">
+                            <div style="font-size:0.85rem;">Ideal</div>
+                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(Anggaran Hemat & Output Tinggi)</div>
+                        </div>
+                    </div>
+                </div>
+                """
+                st.markdown(matrix_html, unsafe_allow_html=True)
+
             # Detail Perhitungan Transparan
-            if pd.notna(avg_e) and pd.notna(prog_out):
-                r_val = curr_target / prog_out if prog_out > 0 else 0
-                sigma_val = np.log(2.0) / np.sqrt(2 * np.log(2))
-                ln_r = np.log(r_val) if r_val > 0 else 0
-                score_verify = 100 * np.exp(-0.5 * (ln_r / sigma_val) ** 2) if r_val > 0 else 0
-                pagu_val = row.get('pagu', 0)
-                
+            if pd.notna(avg_e) and pd.notna(prog_out) and pd.notna(efs_ratio) and pd.notna(efk_ratio):
                 st.markdown(f"""
                 <div style='background:linear-gradient(135deg,#f8fafc,#eef2ff);padding:20px;border-radius:12px;border:1px solid #c7d2fe;margin:12px 0;'>
                 <h4 style='color:#1e3a8a;margin:0 0 16px 0;'>[Kalkulasi] Langkah Perhitungan Dimensi 3</h4>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
-                <b style='color:#1e40af;'>Langkah 1 - Menghitung Efisiensi Kemampuan Historis</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>Sistem melihat rekam jejak di tahun-tahun sebelumnya. Untuk setiap tahun historis, dihitung seberapa banyak output yang dihasilkan dari setiap rupiah (Realisasi Output / Realisasi Anggaran). Semua hasilnya lalu dirata-ratakan.</span><br>
-                <span style='color:#64748b;font-size:0.85em;'>Artinya, rata-rata untuk setiap Rp. 1 yang dikeluarkan, daerah ini mampu menghasilkan <b>{avg_e:.10f}</b> output.</span><br>
-                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Kalkulasi: Menjumlahkan (Realisasi Output / Realisasi Pagu) dari setiap tahun sebelumnya, lalu dibagi jumlah tahun.</code>
+                <b style='color:#1e40af;'>Langkah 1 - Menghitung Efisiensi Kemampuan Historis & Target Prognosis (Hasil)</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Sistem menghitung rata-rata output per rupiah dari realisasi historis: <b>{avg_e:.10f}</b> unit/Rupiah.</span><br>
+                <span style='color:#64748b;font-size:0.85em;'>Berdasarkan pagu berjalan ({format_currency(pagu_val)}), target prognosis (yang seharusnya mampu dicapai) adalah:</span><br>
+                <code style='font-size:0.95em;'>Target Prognosis = Pagu × Efisiensi Historis = {format_currency(pagu_val)} × {avg_e:.10f} = <b>{format_number(prog_out, 2)} unit</b></code>
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
-                <b style='color:#1e40af;'>Langkah 2 - Menghitung Target Ideal (Prognosis Seharusnya)</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>Dengan Anggaran yang diajukan tahun ini, kita bisa menebak target logis yang SEHARUSNYA bisa dicapai jika daerah mempertahankan kemampuan historisnya.</span><br>
-                <code style='font-size:0.95em;'>Target Seharusnya = Anggaran Tahun Ini x Kemampuan Historis</code><br>
-                <code style='font-size:0.95em;'>Target Seharusnya = {format_currency(pagu_val)} x {avg_e:.10f} = <b>{format_number(prog_out, 4)}</b> output</code>
+                <b style='color:#1e40af;'>Langkah 2 - Menghitung Rasio & Label Sumbu</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Kedua rasio sumbu dihitung secara independen:</span><br>
+                <code style='font-size:0.95em;'>Rasio Efisiensi (Input) = Pagu Usulan / Rata-rata Pagu Historis = {format_currency(pagu_val)} / {format_currency(hist_pagu_avg) if pd.notna(hist_pagu_avg) else "-"} = <b>{efs_ratio:.2f}x</b> (Status: {efs_label})</code><br>
+                <code style='font-size:0.95em;'>Rasio Efektivitas (Output) = Target Usulan / Target Prognosis = {format_number(curr_target, 2)} / {format_number(prog_out, 2)} = <b>{efk_ratio:.2f}x</b> (Status: {efk_label})</code>
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #f59e0b;'>
-                <b style='color:#92400e;'>Langkah 3 - Mengukur Rasio Kewajaran Target</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>Sistem membandingkan Target Usulan yang diajukan dengan Target Seharusnya.</span><br>
-                <code style='font-size:0.95em;'>Rasio = Target Usulan ({format_number(curr_target, 2)}) / Target Seharusnya ({format_number(prog_out, 4)}) = <b>{r_val:.4f}</b></code><br>
-                <span style='color:#64748b;font-size:0.85em;'><b>Kesimpulan:</b> {'Target ini terlalu AMBISIUS/Over-promising' if r_val > 1.1 else 'Target ini terlalu KONSERVATIF/Pesimis' if r_val < 0.9 else 'Target ini SANGAT REALISTIS'}</span>
+                <b style='color:#92400e;'>Langkah 3 - Penentuan Kuadran Kondisi Kinerja</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Menggunakan matriks evaluasi 4 kuadran:</span><br>
+                <span style='color:#64748b;font-size:0.85em;'>Efisiensi <b>{efs_label}</b> ({'Pagu wajar/hemat' if efs_label == 'Tinggi' else 'Pagu tinggi/boros'}) &times; Efektivitas <b>{efk_label}</b> ({'Target memadai/tinggi' if efk_label == 'Tinggi' else 'Target sedang' if efk_label == 'Sedang' else 'Target rendah'}) menghasilkan status: <b>{kondisi_kinerja}</b>.</span>
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #10b981;'>
-                <b style='color:#065f46;'>Langkah 4 - Penilaian Skor Kesesuaian</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>Berdasarkan rasio di atas, jika target usulan sangat melenceng (jauh lebih tinggi atau jauh lebih rendah dari target seharusnya), skornya akan dipotong.</span><br>
-                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Kalkulasi ln(r): ln({r_val:.4f}) = {ln_r:.4f}</code><br>
-                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Kalkulasi Skor: 100 x exp(-0.5 x ({ln_r:.4f} / {sigma_val:.4f})^2)</code><br>
-                <code style='font-size:1.1em;'><b style='color:#059669;'>Hasil Akhir -> Skor Dimensi 3 = {score_verify:.1f} dari 100</b></code>
+                <b style='color:#065f46;'>Langkah 4 - Perhitungan Skor Akhir (Gaussian Decay pada Kedua Sumbu)</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Masing-masing sumbu diberi skor 0-100 menggunakan fungsi Gaussian Decay. Efisiensi diberi penalti jika rasio > 1.0 (overbudgeting). Efektivitas diberi penalti jika rasio < 1.0 (underachieving). Skor akhir adalah rata-rata keduanya.</span><br>
+                <code style='font-size:0.95em;color:#475569;background:#f1f5f9;padding:2px 6px;border-radius:4px;'>Skor Efisiensi = {score_efs:.1f} | Skor Efektivitas = {score_efk:.1f}</code><br>
+                <code style='font-size:1.1em;'><b style='color:#059669;'>Hasil Akhir -> Skor Dimensi 3 = {d3_score:.1f} dari 100</b></code>
                 </div>
                 </div>
                 """, unsafe_allow_html=True)
-                
-                tier_html = (
-                    "<details style='margin-top:8px;'><summary style='cursor:pointer;color:#1e3a8a;font-weight:bold;font-size:0.85rem;'>[Chart] Tabel Kalibrasi Skor Target (Goal Realism)</summary>"
-                    "<table style='width:100%;border-collapse:collapse;font-size:0.85rem;margin-top:8px;'>"
-                    "<tr style='background:#f1f5f9;'><th style='padding:8px;text-align:center;border-bottom:1px solid #cbd5e1;'>Rasio Usulan vs Prognosis (r)</th><th style='padding:8px;text-align:center;border-bottom:1px solid #cbd5e1;'>Skor</th><th style='padding:8px;text-align:left;border-bottom:1px solid #cbd5e1;'>Interpretasi</th></tr>"
-                    "<tr style='background:#f0fdf4;'><td style='padding:6px 8px;text-align:center;'>1.0 (Sesuai Prognosis)</td><td style='padding:6px 8px;text-align:center;font-weight:bold;'>100.0</td><td style='padding:6px 8px;color:#22c55e;'>Sangat Wajar & Realistis</td></tr>"
-                    "<tr><td style='padding:6px 8px;text-align:center;'>1.2 (Ambis Wajar)</td><td style='padding:6px 8px;text-align:center;'>95.3</td><td style='padding:6px 8px;color:#22c55e;'>Ambis Realistis (Wajar)</td></tr>"
-                    "<tr style='background:#fef2f2;'><td style='padding:6px 8px;text-align:center;font-weight:bold;'>2.0 (Over-promising)</td><td style='padding:6px 8px;text-align:center;font-weight:bold;'>50.0</td><td style='padding:6px 8px;color:#ef4444;font-weight:bold;'>Batas Atas Target Tidak Realistis</td></tr>"
-                    "<tr><td style='padding:6px 8px;text-align:center;'>3.0</td><td style='padding:6px 8px;text-align:center;'>17.6</td><td style='padding:6px 8px;color:#7f1d1d;'>Sangat Tidak Realistis (Over-claim)</td></tr>"
-                    "<tr style='background:#fef2f2;'><td style='padding:6px 8px;text-align:center;font-weight:bold;'>0.5 (Under-achieving)</td><td style='padding:6px 8px;text-align:center;font-weight:bold;'>50.0</td><td style='padding:6px 8px;color:#eab308;font-weight:bold;'>Batas Bawah Target Tidak Efisien (Malas)</td></tr>"
-                    "<tr><td style='padding:6px 8px;text-align:center;'>0.25</td><td style='padding:6px 8px;text-align:center;'>6.3</td><td style='padding:6px 8px;color:#7f1d1d;'>Sangat Tidak Efisien</td></tr>"
-                    "</table>"
-                    "<div style='margin-top:8px;font-size:0.8rem;color:#64748b;'>"
-                    "<b>Referensi Akademik:</b> Locke, E.A. & Latham, G.P. (1990). <i>A Theory of Goal Setting & Task Performance</i>. Prentice Hall."
-                    "</div>"
-                    "</details>"
-                )
-                st.markdown(tier_html, unsafe_allow_html=True)
             else:
-                st.caption("[Info] Tidak ada data realisasi historis. Dimensi ini tidak berkontribusi terhadap IKP (Dynamic Weighting).")
+                st.caption("[Info] Tidak ada data realisasi historis atau pagu historis. Dimensi ini tidak berkontribusi terhadap IKP (Dynamic Weighting).")
 
             st.markdown(f"##### Analisis Prognosis {row.get('tahun', '')} (note: hanya fokus pada angka realisasinya saja)")
             # Fetch historical realization data
