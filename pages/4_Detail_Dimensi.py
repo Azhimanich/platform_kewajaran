@@ -615,11 +615,11 @@ if selected_sub:
             # Row 1: Efisiensi (Input)
             st.markdown("##### Sumbu Efisiensi (Input & Anggaran)")
             c1_1, c1_2, c1_3, c1_4 = st.columns(4)
-            pagu_val = row.get("pagu", pd.NA)
-            hist_pagu_avg = row.get("hist_pagu_avg", pd.NA)
-            c1_1.metric("Pagu Usulan", format_currency(pagu_val) if pd.notna(pagu_val) else "-")
-            c1_2.metric("Rata-rata Pagu Historis", format_currency(hist_pagu_avg) if pd.notna(hist_pagu_avg) else "-")
-            c1_3.metric("Rasio Efisiensi", f"{efs_ratio:.2f}x" if pd.notna(efs_ratio) else "-")
+            bsk_val = row.get("bsk", pd.NA)
+            hist_bsk_avg = row.get("historical_bsk_avg", pd.NA)
+            c1_1.metric("BSK Usulan", format_currency(bsk_val) if pd.notna(bsk_val) else "-")
+            c1_2.metric("Rata-rata BSK Historis", format_currency(hist_bsk_avg) if pd.notna(hist_bsk_avg) else "-")
+            c1_3.metric("Rasio Efisiensi (BSK)", f"{efs_ratio:.2f}x" if pd.notna(efs_ratio) else "-")
             c1_4.metric("Skor Efisiensi (Input)", f"{score_efs:.1f}" if pd.notna(score_efs) else "-")
             
             # Row 2: Efektivitas (Output)
@@ -667,33 +667,33 @@ if selected_sub:
                         <div style="text-align: center; font-weight: bold; color: #475569; font-size: 0.8rem; background: #e2e8f0; padding: 8px; border-radius: 4px;">Efektivitas Tinggi<br><span style="font-weight:normal; font-size:0.7rem;">(Target &ge; 80% Prognosis)</span></div>
                         
                         <!-- Row 1: Efisiensi Rendah -->
-                        <div style="font-weight: bold; color: #475569; font-size: 0.8rem; text-align: right; padding-right: 10px; background: #f1f5f9; padding: 8px; border-radius: 4px;">Efisiensi Rendah<br><span style="font-weight:normal; font-size:0.7rem;">(Pagu &gt; 1.2x Historis)</span></div>
+                        <div style="font-weight: bold; color: #475569; font-size: 0.8rem; text-align: right; padding-right: 10px; background: #f1f5f9; padding: 8px; border-radius: 4px;">Efisiensi Rendah<br><span style="font-weight:normal; font-size:0.7rem;">(BSK &gt; 1.2x Historis)</span></div>
                         <div style="{style_cell_1}">
                             <div style="font-size:0.85rem;">Tidak Wajar / Boros</div>
-                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(Anggaran Boros, Output Rendah)</div>
+                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(BSK Boros, Output Rendah)</div>
                         </div>
                         <div style="{style_cell_2}">
                             <div style="font-size:0.85rem;">Tidak Wajar / Boros</div>
-                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(Anggaran Boros, Output Sedang)</div>
+                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(BSK Boros, Output Sedang)</div>
                         </div>
                         <div style="{style_cell_3}">
                             <div style="font-size:0.85rem;">Ideal</div>
-                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(Anggaran Naik & Output Tinggi)</div>
+                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(BSK Naik & Output Tinggi)</div>
                         </div>
 
                         <!-- Row 2: Efisiensi Tinggi -->
-                        <div style="font-weight: bold; color: #475569; font-size: 0.8rem; text-align: right; padding-right: 10px; background: #f1f5f9; padding: 8px; border-radius: 4px;">Efisiensi Tinggi<br><span style="font-weight:normal; font-size:0.7rem;">(Pagu &le; 1.2x Historis)</span></div>
+                        <div style="font-weight: bold; color: #475569; font-size: 0.8rem; text-align: right; padding-right: 10px; background: #f1f5f9; padding: 8px; border-radius: 4px;">Efisiensi Tinggi<br><span style="font-weight:normal; font-size:0.7rem;">(BSK &le; 1.2x Historis)</span></div>
                         <div style="{style_cell_4}">
                             <div style="font-size:0.85rem;">Kurang Dana</div>
-                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(Anggaran Rendah, Output Rendah)</div>
+                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(BSK Hemat, Output Rendah)</div>
                         </div>
                         <div style="{style_cell_5}">
                             <div style="font-size:0.85rem;">Sangat Efisien</div>
-                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(Anggaran Rendah, Output Sedang)</div>
+                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(BSK Hemat, Output Sedang)</div>
                         </div>
                         <div style="{style_cell_6}">
                             <div style="font-size:0.85rem;">Ideal</div>
-                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(Anggaran Hemat & Output Tinggi)</div>
+                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(BSK Hemat & Output Tinggi)</div>
                         </div>
                     </div>
                 </div>
@@ -716,14 +716,14 @@ if selected_sub:
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #3b82f6;'>
                 <b style='color:#1e40af;'>Langkah 2 - Menghitung Rasio & Label Sumbu</b><br>
                 <span style='color:#64748b;font-size:0.85em;'>Kedua rasio sumbu dihitung secara independen:</span><br>
-                <code style='font-size:0.95em;'>Rasio Efisiensi (Input) = Pagu Usulan / Rata-rata Pagu Historis = {format_currency(pagu_val)} / {format_currency(hist_pagu_avg) if pd.notna(hist_pagu_avg) else "-"} = <b>{efs_ratio:.2f}x</b> (Status: {efs_label})</code><br>
+                <code style='font-size:0.95em;'>Rasio Efisiensi (Input) = BSK Usulan / Rata-rata BSK Historis = {format_currency(bsk_val) if pd.notna(bsk_val) else "-"} / {format_currency(hist_bsk_avg) if pd.notna(hist_bsk_avg) else "-"} = <b>{efs_ratio:.2f}x</b> (Status: {efs_label})</code><br>
                 <code style='font-size:0.95em;'>Rasio Efektivitas (Output) = Target Usulan / Target Prognosis = {format_number(curr_target, 2)} / {format_number(prog_out, 2)} = <b>{efk_ratio:.2f}x</b> (Status: {efk_label})</code>
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #f59e0b;'>
                 <b style='color:#92400e;'>Langkah 3 - Penentuan Kuadran Kondisi Kinerja</b><br>
                 <span style='color:#64748b;font-size:0.85em;'>Menggunakan matriks evaluasi 4 kuadran:</span><br>
-                <span style='color:#64748b;font-size:0.85em;'>Efisiensi <b>{efs_label}</b> ({'Pagu wajar/hemat' if efs_label == 'Tinggi' else 'Pagu tinggi/boros'}) &times; Efektivitas <b>{efk_label}</b> ({'Target memadai/tinggi' if efk_label == 'Tinggi' else 'Target sedang' if efk_label == 'Sedang' else 'Target rendah'}) menghasilkan status: <b>{kondisi_kinerja}</b>.</span>
+                <span style='color:#64748b;font-size:0.85em;'>Efisiensi <b>{efs_label}</b> ({'BSK wajar/hemat' if efs_label == 'Tinggi' else 'BSK tinggi/boros'}) &times; Efektivitas <b>{efk_label}</b> ({'Target memadai/tinggi' if efk_label == 'Tinggi' else 'Target sedang' if efk_label == 'Sedang' else 'Target rendah'}) menghasilkan status: <b>{kondisi_kinerja}</b>.</span>
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #10b981;'>
@@ -735,7 +735,7 @@ if selected_sub:
                 </div>
                 """, unsafe_allow_html=True)
             else:
-                st.caption("[Info] Tidak ada data realisasi historis atau pagu historis. Dimensi ini tidak berkontribusi terhadap IKP (Dynamic Weighting).")
+                st.caption("[Info] Tidak ada data realisasi historis atau rata-rata BSK historis. Dimensi ini tidak berkontribusi terhadap IKP (Dynamic Weighting).")
 
             st.markdown(f"##### Analisis Prognosis {row.get('tahun', '')} (note: hanya fokus pada angka realisasinya saja)")
             # Fetch historical realization data

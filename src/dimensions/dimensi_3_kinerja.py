@@ -133,14 +133,17 @@ def calculate(df: pd.DataFrame) -> pd.DataFrame:
             res.loc[valid_efk, "target"] / res.loc[valid_efk, "prognosis_output"]
         )
 
-    # ── Step 5: Efisiensi Ratio (pagu / hist_pagu_avg) ──
+    # ── Step 5: Efisiensi Ratio (bsk / historical_bsk_avg) ──
+    valid_bsk = (res["pagu"] > 0) & (res["target"].notna()) & (res["target"] > 0)
+    res.loc[valid_bsk, "bsk"] = res.loc[valid_bsk, "pagu"] / res.loc[valid_bsk, "target"]
+
     valid_efs = (
-        res["pagu"].notna() & (res["pagu"] > 0) &
-        res["hist_pagu_avg"].notna() & (res["hist_pagu_avg"] > 0)
+        res["bsk"].notna() & (res["bsk"] > 0) &
+        res["historical_bsk_avg"].notna() & (res["historical_bsk_avg"] > 0)
     )
     if valid_efs.any():
         res.loc[valid_efs, "efisiensi_ratio"] = (
-            res.loc[valid_efs, "pagu"] / res.loc[valid_efs, "hist_pagu_avg"]
+            res.loc[valid_efs, "bsk"] / res.loc[valid_efs, "historical_bsk_avg"]
         )
 
     # ── Step 6: Labels ──
