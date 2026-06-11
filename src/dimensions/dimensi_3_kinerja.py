@@ -22,9 +22,8 @@ import pandas as pd
 import numpy as np
 
 # Threshold klasifikasi
-EFISIENSI_THRESHOLD = 1.2   # pagu/hist_pagu > 1.2 → Efisiensi Rendah (boros)
-EFEKTIVITAS_TINGGI = 0.8    # target/prognosis >= 0.8 → Efektivitas Tinggi
-EFEKTIVITAS_SEDANG = 0.5    # target/prognosis >= 0.5 → Efektivitas Sedang
+EFISIENSI_THRESHOLD = 1.2   # bsk/historical_bsk_avg > 1.2 → Efisiensi Rendah (boros)
+EFEKTIVITAS_THRESHOLD = 0.8  # target/prognosis >= 0.8 → Efektivitas Tinggi (memadai)
 
 # Gaussian Decay sigma (calibrated: ratio=2 atau ratio=0.5 → score ≈ 50)
 SIGMA_R = np.log(2.0) / np.sqrt(2 * np.log(2))  # ≈ 0.5888
@@ -150,20 +149,18 @@ def calculate(df: pd.DataFrame) -> pd.DataFrame:
     efs = res["efisiensi_ratio"]
     efk = res["efektivitas_ratio"]
 
-    # Efisiensi: pagu/hist_pagu ≤ threshold → Tinggi (hemat), > threshold → Rendah (boros)
+    # Efisiensi: BSK/historical_bsk_avg ≤ threshold → Tinggi (hemat), > threshold → Rendah (boros)
     res.loc[efs.notna() & (efs <= EFISIENSI_THRESHOLD), "efisiensi_label"] = "Tinggi"
     res.loc[efs.notna() & (efs > EFISIENSI_THRESHOLD), "efisiensi_label"] = "Rendah"
 
     # Efektivitas: target/prognosis
-    res.loc[efk.notna() & (efk >= EFEKTIVITAS_TINGGI), "efektivitas_label"] = "Tinggi"
-    res.loc[efk.notna() & (efk >= EFEKTIVITAS_SEDANG) & (efk < EFEKTIVITAS_TINGGI), "efektivitas_label"] = "Sedang"
-    res.loc[efk.notna() & (efk < EFEKTIVITAS_SEDANG), "efektivitas_label"] = "Rendah"
+    res.loc[efk.notna() & (efk >= EFEKTIVITAS_THRESHOLD), "efektivitas_label"] = "Tinggi"
+    res.loc[efk.notna() & (efk < EFEKTIVITAS_THRESHOLD), "efektivitas_label"] = "Rendah"
 
     # ── Step 7: Klasifikasi Kuadran ──
     efs_t = res["efisiensi_label"] == "Tinggi"
     efs_r = res["efisiensi_label"] == "Rendah"
     efk_t = res["efektivitas_label"] == "Tinggi"
-    efk_s = res["efektivitas_label"] == "Sedang"
     efk_r = res["efektivitas_label"] == "Rendah"
 
     has_efs = efs.notna()
@@ -171,17 +168,18 @@ def calculate(df: pd.DataFrame) -> pd.DataFrame:
     both = has_efs & has_efk
 
     # Matriks penuh (kedua sumbu tersedia)
-    res.loc[both & efs_t & efk_t, "dimensi_3_kondisi"] = "Ideal"
-    res.loc[both & efs_t & efk_s, "dimensi_3_kondisi"] = "Sangat Efisien"
-    res.loc[both & efs_t & efk_r, "dimensi_3_kondisi"] = "Kurang Dana"
+    # 1. BSK Boros, Output Rendah -> Tidak Wajar/Boros
     res.loc[both & efs_r & efk_r, "dimensi_3_kondisi"] = "Tidak Wajar/Boros"
-    res.loc[both & efs_r & efk_s, "dimensi_3_kondisi"] = "Tidak Wajar/Boros"
+    # 2. BSK Hemat, Output Rendah -> Kurang Dana
+    res.loc[both & efs_t & efk_r, "dimensi_3_kondisi"] = "Kurang Dana"
+    # 3. BSK Hemat, Output Tinggi -> Sangat Efisien
+    res.loc[both & efs_t & efk_t, "dimensi_3_kondisi"] = "Sangat Efisien"
+    # 4. BSK Boros (Naik), Output Tinggi -> Ideal
     res.loc[both & efs_r & efk_t, "dimensi_3_kondisi"] = "Ideal"
 
     # Hanya efektivitas tersedia (tanpa data hist_pagu)
     only_efk = ~has_efs & has_efk
     res.loc[only_efk & efk_t, "dimensi_3_kondisi"] = "Ideal"
-    res.loc[only_efk & efk_s, "dimensi_3_kondisi"] = "Sangat Efisien"
     res.loc[only_efk & efk_r, "dimensi_3_kondisi"] = "Tidak Wajar/Boros"
 
     # ── Step 8: Skor (Asymmetric Gaussian Decay) ──
