@@ -656,48 +656,44 @@ if selected_sub:
                 style_cell_5 = get_cell_style(cell_5_active, "#0284c7", "#e0f2fe", "#075985") # Sangat Efisien
                 style_cell_6 = get_cell_style(cell_6_active, "#22c55e", "#dcfce7", "#166534") # Ideal
 
-                matrix_html = f"""
-                <div style="margin: 25px 0; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
-                    <h5 style="margin-top:0; color: #1e293b; text-align: center; font-weight: 700; font-size: 0.95rem; letter-spacing: 0.05em; text-transform: uppercase;">Posisi Sub-Kegiatan pada Matriks Kinerja</h5>
-                    <div style="display: grid; grid-template-columns: 140px 1fr 1fr 1fr; gap: 12px; align-items: center; max-width: 800px; margin: 20px auto; font-family: sans-serif;">
-                        <!-- Header Row -->
-                        <div></div>
-                        <div style="text-align: center; font-weight: bold; color: #475569; font-size: 0.8rem; background: #e2e8f0; padding: 8px; border-radius: 4px;">Efektivitas Rendah<br><span style="font-weight:normal; font-size:0.7rem;">(Target &lt; 50% Prognosis)</span></div>
-                        <div style="text-align: center; font-weight: bold; color: #475569; font-size: 0.8rem; background: #e2e8f0; padding: 8px; border-radius: 4px;">Efektivitas Sedang<br><span style="font-weight:normal; font-size:0.7rem;">(Target 50% - 80%)</span></div>
-                        <div style="text-align: center; font-weight: bold; color: #475569; font-size: 0.8rem; background: #e2e8f0; padding: 8px; border-radius: 4px;">Efektivitas Tinggi<br><span style="font-weight:normal; font-size:0.7rem;">(Target &ge; 80% Prognosis)</span></div>
-                        
-                        <!-- Row 1: Efisiensi Rendah -->
-                        <div style="font-weight: bold; color: #475569; font-size: 0.8rem; text-align: right; padding-right: 10px; background: #f1f5f9; padding: 8px; border-radius: 4px;">Efisiensi Rendah<br><span style="font-weight:normal; font-size:0.7rem;">(BSK &gt; 1.2x Historis)</span></div>
-                        <div style="{style_cell_1}">
-                            <div style="font-size:0.85rem;">Tidak Wajar / Boros</div>
-                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(BSK Boros, Output Rendah)</div>
-                        </div>
-                        <div style="{style_cell_2}">
-                            <div style="font-size:0.85rem;">Tidak Wajar / Boros</div>
-                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(BSK Boros, Output Sedang)</div>
-                        </div>
-                        <div style="{style_cell_3}">
-                            <div style="font-size:0.85rem;">Ideal</div>
-                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(BSK Naik & Output Tinggi)</div>
-                        </div>
-
-                        <!-- Row 2: Efisiensi Tinggi -->
-                        <div style="font-weight: bold; color: #475569; font-size: 0.8rem; text-align: right; padding-right: 10px; background: #f1f5f9; padding: 8px; border-radius: 4px;">Efisiensi Tinggi<br><span style="font-weight:normal; font-size:0.7rem;">(BSK &le; 1.2x Historis)</span></div>
-                        <div style="{style_cell_4}">
-                            <div style="font-size:0.85rem;">Kurang Dana</div>
-                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(BSK Hemat, Output Rendah)</div>
-                        </div>
-                        <div style="{style_cell_5}">
-                            <div style="font-size:0.85rem;">Sangat Efisien</div>
-                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(BSK Hemat, Output Sedang)</div>
-                        </div>
-                        <div style="{style_cell_6}">
-                            <div style="font-size:0.85rem;">Ideal</div>
-                            <div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(BSK Hemat & Output Tinggi)</div>
-                        </div>
-                    </div>
-                </div>
-                """
+                matrix_html = f"""<div style="margin: 25px 0; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+<h5 style="margin-top:0; color: #1e293b; text-align: center; font-weight: 700; font-size: 0.95rem; letter-spacing: 0.05em; text-transform: uppercase;">Posisi Sub-Kegiatan pada Matriks Kinerja</h5>
+<div style="display: grid; grid-template-columns: 140px 1fr 1fr 1fr; gap: 12px; align-items: center; max-width: 800px; margin: 20px auto; font-family: sans-serif;">
+<!-- Header Row -->
+<div></div>
+<div style="text-align: center; font-weight: bold; color: #475569; font-size: 0.8rem; background: #e2e8f0; padding: 8px; border-radius: 4px;">Efektivitas Rendah<br><span style="font-weight:normal; font-size:0.7rem;">(Target &lt; 50% Prognosis)</span></div>
+<div style="text-align: center; font-weight: bold; color: #475569; font-size: 0.8rem; background: #e2e8f0; padding: 8px; border-radius: 4px;">Efektivitas Sedang<br><span style="font-weight:normal; font-size:0.7rem;">(Target 50% - 80%)</span></div>
+<div style="text-align: center; font-weight: bold; color: #475569; font-size: 0.8rem; background: #e2e8f0; padding: 8px; border-radius: 4px;">Efektivitas Tinggi<br><span style="font-weight:normal; font-size:0.7rem;">(Target &ge; 80% Prognosis)</span></div>
+<!-- Row 1: Efisiensi Rendah -->
+<div style="font-weight: bold; color: #475569; font-size: 0.8rem; text-align: right; padding-right: 10px; background: #f1f5f9; padding: 8px; border-radius: 4px;">Efisiensi Rendah<br><span style="font-weight:normal; font-size:0.7rem;">(BSK &gt; 1.2x Historis)</span></div>
+<div style="{style_cell_1}">
+<div style="font-size:0.85rem;">Tidak Wajar / Boros</div>
+<div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(BSK Boros, Output Rendah)</div>
+</div>
+<div style="{style_cell_2}">
+<div style="font-size:0.85rem;">Tidak Wajar / Boros</div>
+<div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(BSK Boros, Output Sedang)</div>
+</div>
+<div style="{style_cell_3}">
+<div style="font-size:0.85rem;">Ideal</div>
+<div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(BSK Naik & Output Tinggi)</div>
+</div>
+<!-- Row 2: Efisiensi Tinggi -->
+<div style="font-weight: bold; color: #475569; font-size: 0.8rem; text-align: right; padding-right: 10px; background: #f1f5f9; padding: 8px; border-radius: 4px;">Efisiensi Tinggi<br><span style="font-weight:normal; font-size:0.7rem;">(BSK &le; 1.2x Historis)</span></div>
+<div style="{style_cell_4}">
+<div style="font-size:0.85rem;">Kurang Dana</div>
+<div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(BSK Hemat, Output Rendah)</div>
+</div>
+<div style="{style_cell_5}">
+<div style="font-size:0.85rem;">Sangat Efisien</div>
+<div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(BSK Hemat, Output Sedang)</div>
+</div>
+<div style="{style_cell_6}">
+<div style="font-size:0.85rem;">Ideal</div>
+<div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(BSK Hemat & Output Tinggi)</div>
+</div>
+</div>
+</div>"""
                 st.markdown(matrix_html, unsafe_allow_html=True)
 
             # Detail Perhitungan Transparan
