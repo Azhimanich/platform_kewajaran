@@ -2,28 +2,39 @@
 Dimensi 3 - Kewajaran Kinerja (Matriks Efisiensi × Efektivitas).
 
 Mengevaluasi kewajaran kinerja sub-kegiatan menggunakan dua sumbu independen:
-  1. Efisiensi (Input/Proses): Pagu saat ini vs rata-rata Pagu historis
+  1. Efisiensi (Input/Proses): BSK Usulan vs rata-rata BSK historis
      → "Apakah anggaran yang diusulkan wajar dibanding historis?"
-  2. Efektivitas (Output/Hasil): Target saat ini vs Target Prognosis
+  2. Efektivitas (Output/Hasil): Target Usulan vs Target Prognosis
      → "Apakah target output sesuai kemampuan historis?"
 
-Klasifikasi 4 Kuadran (Tabel 3.5 - Matriks Evaluasi Kondisi Kinerja):
-  ┌─────────────────────┬────────────────────────┐
-  │ TIDAK WAJAR/BOROS   │       IDEAL            │
-  │ Input↑ Output↓      │  Input↑ Output↑        │
-  ├─────────────────────┼────────────────────────┤
-  │   KURANG DANA       │   SANGAT EFISIEN       │
-  │ Input↓ Output↓      │  Input↓ Output↑        │
-  └─────────────────────┴────────────────────────┘
+Klasifikasi 3x3 (9 Skenario - Matriks Evaluasi Kondisi Kinerja):
+                   Output Rendah        Output Optimal       Output Tinggi
+                   (Rasio < 0.9)      (0.9 ≤ Rasio ≤ 1.1)   (Rasio > 1.1)
+  ┌─────────────────────┬─────────────────────┬─────────────────────┐
+  │  Tidak Wajar/Warning│   Kurang Efisien    │ Efektif, tapi Mahal │ BSK Boros
+  │  Input↑ Output↓     │   Input↑ Output=    │ Input↑ Output↑      │ (Rasio > 1.1)
+  ├─────────────────────┼─────────────────────┼─────────────────────┤
+  │  Underperforming    │ Normal / Baseline   │       Ideal         │ BSK Wajar
+  │  Input= Output↓    │   Input= Output=    │ Input= Output↑      │ (0.9 ≤ Rasio ≤ 1.1)
+  ├─────────────────────┼─────────────────────┼─────────────────────┤
+  │   Underutilized     │  Efisiensi Tinggi   │   Super Efisien     │ BSK Hemat
+  │  Input↓ Output↓    │   Input↓ Output=    │ Input↓ Output↑      │ (Rasio < 0.9)
+  └─────────────────────┴─────────────────────┴─────────────────────┘
 
 Tidak ada hardcode - jika tidak ada data realisasi historis, skor = NaN.
 """
 import pandas as pd
 import numpy as np
 
-# Threshold klasifikasi
-EFISIENSI_THRESHOLD = 1.2   # bsk/historical_bsk_avg > 1.2 → Efisiensi Rendah (boros)
-EFEKTIVITAS_THRESHOLD = 0.8  # target/prognosis >= 0.8 → Efektivitas Tinggi (memadai)
+# Threshold klasifikasi 3x3
+# Sumbu Efisiensi (Input)
+EFISIENSI_LOW = 0.9
+EFISIENSI_HIGH = 1.1
+
+# Sumbu Efektivitas (Output)
+EFEKTIVITAS_LOW = 0.9
+EFEKTIVITAS_HIGH = 1.1
+
 
 # Gaussian Decay sigma (calibrated: ratio=2 atau ratio=0.5 → score ≈ 50)
 SIGMA_R = np.log(2.0) / np.sqrt(2 * np.log(2))  # ≈ 0.5888
@@ -149,38 +160,50 @@ def calculate(df: pd.DataFrame) -> pd.DataFrame:
     efs = res["efisiensi_ratio"]
     efk = res["efektivitas_ratio"]
 
-    # Efisiensi: BSK/historical_bsk_avg ≤ threshold → Tinggi (hemat), > threshold → Rendah (boros)
-    res.loc[efs.notna() & (efs <= EFISIENSI_THRESHOLD), "efisiensi_label"] = "Tinggi"
-    res.loc[efs.notna() & (efs > EFISIENSI_THRESHOLD), "efisiensi_label"] = "Rendah"
+    # Efisiensi: BSK/historical_bsk_avg
+    res.loc[efs.notna() & (efs < EFISIENSI_LOW), "efisiensi_label"] = "Hemat"
+    res.loc[efs.notna() & (efs >= EFISIENSI_LOW) & (efs <= EFISIENSI_HIGH), "efisiensi_label"] = "Wajar"
+    res.loc[efs.notna() & (efs > EFISIENSI_HIGH), "efisiensi_label"] = "Boros"
 
     # Efektivitas: target/prognosis
-    res.loc[efk.notna() & (efk >= EFEKTIVITAS_THRESHOLD), "efektivitas_label"] = "Tinggi"
-    res.loc[efk.notna() & (efk < EFEKTIVITAS_THRESHOLD), "efektivitas_label"] = "Rendah"
+    res.loc[efk.notna() & (efk < EFEKTIVITAS_LOW), "efektivitas_label"] = "Rendah"
+    res.loc[efk.notna() & (efk >= EFEKTIVITAS_LOW) & (efk <= EFEKTIVITAS_HIGH), "efektivitas_label"] = "Optimal"
+    res.loc[efk.notna() & (efk > EFEKTIVITAS_HIGH), "efektivitas_label"] = "Tinggi"
 
-    # ── Step 7: Klasifikasi Kuadran ──
-    efs_t = res["efisiensi_label"] == "Tinggi"
-    efs_r = res["efisiensi_label"] == "Rendah"
-    efk_t = res["efektivitas_label"] == "Tinggi"
+    # ── Step 7: Klasifikasi Kuadran (Matriks 3x3) ──
+    efs_h = res["efisiensi_label"] == "Hemat"
+    efs_w = res["efisiensi_label"] == "Wajar"
+    efs_b = res["efisiensi_label"] == "Boros"
+
     efk_r = res["efektivitas_label"] == "Rendah"
+    efk_o = res["efektivitas_label"] == "Optimal"
+    efk_t = res["efektivitas_label"] == "Tinggi"
 
     has_efs = efs.notna()
     has_efk = efk.notna()
     both = has_efs & has_efk
 
     # Matriks penuh (kedua sumbu tersedia)
-    # 1. BSK Boros, Output Rendah -> Tidak Wajar/Boros
-    res.loc[both & efs_r & efk_r, "dimensi_3_kondisi"] = "Tidak Wajar/Boros"
-    # 2. BSK Hemat, Output Rendah -> Kurang Dana
-    res.loc[both & efs_t & efk_r, "dimensi_3_kondisi"] = "Kurang Dana"
-    # 3. BSK Hemat, Output Tinggi -> Sangat Efisien
-    res.loc[both & efs_t & efk_t, "dimensi_3_kondisi"] = "Sangat Efisien"
-    # 4. BSK Boros (Naik), Output Tinggi -> Ideal
-    res.loc[both & efs_r & efk_t, "dimensi_3_kondisi"] = "Ideal"
+    # Output Tinggi:
+    res.loc[both & efk_t & efs_h, "dimensi_3_kondisi"] = "Super Efisien"
+    res.loc[both & efk_t & efs_w, "dimensi_3_kondisi"] = "Ideal"
+    res.loc[both & efk_t & efs_b, "dimensi_3_kondisi"] = "Efektif, tapi Mahal"
+
+    # Output Optimal:
+    res.loc[both & efk_o & efs_h, "dimensi_3_kondisi"] = "Efisiensi Tinggi"
+    res.loc[both & efk_o & efs_w, "dimensi_3_kondisi"] = "Normal / Baseline"
+    res.loc[both & efk_o & efs_b, "dimensi_3_kondisi"] = "Kurang Efisien"
+
+    # Output Rendah:
+    res.loc[both & efk_r & efs_h, "dimensi_3_kondisi"] = "Underutilized"
+    res.loc[both & efk_r & efs_w, "dimensi_3_kondisi"] = "Underperforming"
+    res.loc[both & efk_r & efs_b, "dimensi_3_kondisi"] = "Tidak Wajar / Warning"
 
     # Hanya efektivitas tersedia (tanpa data hist_pagu)
     only_efk = ~has_efs & has_efk
     res.loc[only_efk & efk_t, "dimensi_3_kondisi"] = "Ideal"
-    res.loc[only_efk & efk_r, "dimensi_3_kondisi"] = "Tidak Wajar/Boros"
+    res.loc[only_efk & efk_o, "dimensi_3_kondisi"] = "Normal / Baseline"
+    res.loc[only_efk & efk_r, "dimensi_3_kondisi"] = "Tidak Wajar / Warning"
 
     # ── Step 8: Skor (Asymmetric Gaussian Decay) ──
     # Efisiensi: hanya penalti jika ratio > 1 (budget lebih tinggi dari historis)

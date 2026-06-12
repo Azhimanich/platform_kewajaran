@@ -585,14 +585,25 @@ if selected_sub:
             1. **Efisiensi (Input/Proses):** Membandingkan pagu anggaran yang diusulkan saat ini terhadap rata-rata pagu historis.
             2. **Efektivitas (Output/Hasil):** Membandingkan target output yang diusulkan terhadap target prognosis (berdasarkan produktivitas historis).
             
-            Kombinasi kedua rasio ini mengklasifikasikan usulan kinerja ke dalam 4 kuadran: **Ideal**, **Sangat Efisien**, **Kurang Dana**, atau **Tidak Wajar/Boros**.
+            Kombinasi kedua rasio ini mengklasifikasikan usulan kinerja ke dalam 9 skenario klasifikasi 3x3: **Super Efisien**, **Ideal**, **Efektif tapi Mahal**, **Efisiensi Tinggi**, **Normal / Baseline**, **Kurang Efisien**, **Underutilized**, **Underperforming**, atau **Tidak Wajar / Warning**.
             """)
             
             # Menampilkan Status & Skor
             col_status, col_score = st.columns([2, 1])
             with col_status:
                 if kondisi_kinerja:
-                    badge_color = "#22c55e" if kondisi_kinerja == "Ideal" else "#0284c7" if kondisi_kinerja == "Sangat Efisien" else "#f59e0b" if kondisi_kinerja == "Kurang Dana" else "#ef4444"
+                    color_map = {
+                        "Super Efisien": "#0f766e",
+                        "Ideal": "#22c55e",
+                        "Efektif, tapi Mahal": "#f59e0b",
+                        "Efisiensi Tinggi": "#84cc16",
+                        "Normal / Baseline": "#06b6d4",
+                        "Kurang Efisien": "#eab308",
+                        "Underutilized": "#ea580c",
+                        "Underperforming": "#ec4899",
+                        "Tidak Wajar / Warning": "#ef4444",
+                    }
+                    badge_color = color_map.get(kondisi_kinerja, "#64748b")
                     st.markdown(f"""
                     <div style='padding:15px; border-radius:10px; background:{badge_color}15; border:1px solid {badge_color}; text-align:center;'>
                         <span style='font-size:0.9rem; color:#64748b; text-transform:uppercase;'>Kondisi Kinerja</span><br>
@@ -633,7 +644,7 @@ if selected_sub:
             c2_3.metric("Rasio Efektivitas", f"{efk_ratio:.2f}x" if pd.notna(efk_ratio) else "-")
             c2_4.metric("Skor Efektivitas (Output)", f"{score_efk:.1f}" if pd.notna(score_efk) else "-")
 
-            # Matriks Visual 2x3 Grid
+            # Matriks Visual 3x3 Grid
             if kondisi_kinerja and pd.notna(efs_ratio) and pd.notna(efk_ratio):
                 # Hitung cell highlight styles
                 def get_cell_style(is_active, base_border, base_bg, base_color):
@@ -641,42 +652,84 @@ if selected_sub:
                         return f"padding: 12px; border-radius: 6px; border: 3px solid {base_border}; background: {base_bg}; color: {base_color}; text-align: center; box-shadow: 0 0 15px {base_border}80; font-weight: bold; opacity: 1.0; transform: scale(1.02);"
                     else:
                         return f"padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; background: #ffffff; color: #94a3b8; text-align: center; opacity: 0.45; font-weight: normal;"
-                cell_1_active = (efs_label == "Rendah" and efk_label == "Rendah") # BSK Boros, Output Rendah -> Tidak Wajar / Boros
-                cell_2_active = (efs_label == "Tinggi" and efk_label == "Rendah") # BSK Hemat, Output Rendah -> Kurang Dana
-                cell_3_active = (efs_label == "Tinggi" and efk_label == "Tinggi") # BSK Hemat, Output Tinggi -> Sangat Efisien
-                cell_4_active = (efs_label == "Rendah" and efk_label == "Tinggi") # BSK Boros/Naik, Output Tinggi -> Ideal
+                
+                # Active states based on labels
+                c_1_1_active = (efs_label == "Boros" and efk_label == "Rendah")        # Tidak Wajar / Warning
+                c_1_2_active = (efs_label == "Boros" and efk_label == "Optimal")       # Kurang Efisien
+                c_1_3_active = (efs_label == "Boros" and efk_label == "Tinggi")        # Efektif, tapi Mahal
+                
+                c_2_1_active = (efs_label == "Wajar" and efk_label == "Rendah")        # Underperforming
+                c_2_2_active = (efs_label == "Wajar" and efk_label == "Optimal")       # Normal / Baseline
+                c_2_3_active = (efs_label == "Wajar" and efk_label == "Tinggi")        # Ideal
+                
+                c_3_1_active = (efs_label == "Hemat" and efk_label == "Rendah")        # Underutilized
+                c_3_2_active = (efs_label == "Hemat" and efk_label == "Optimal")       # Efisiensi Tinggi
+                c_3_3_active = (efs_label == "Hemat" and efk_label == "Tinggi")        # Super Efisien
 
-                style_cell_1 = get_cell_style(cell_1_active, "#ef4444", "#fee2e2", "#991b1b") # Tidak Wajar/Boros
-                style_cell_2 = get_cell_style(cell_2_active, "#f59e0b", "#fef3c7", "#92400e") # Kurang Dana
-                style_cell_3 = get_cell_style(cell_3_active, "#0284c7", "#e0f2fe", "#075985") # Sangat Efisien
-                style_cell_4 = get_cell_style(cell_4_active, "#22c55e", "#dcfce7", "#166534") # Ideal
+                style_1_1 = get_cell_style(c_1_1_active, "#ef4444", "#fee2e2", "#991b1b") # Tidak Wajar / Warning
+                style_1_2 = get_cell_style(c_1_2_active, "#eab308", "#fef9c3", "#854d0e") # Kurang Efisien
+                style_1_3 = get_cell_style(c_1_3_active, "#f59e0b", "#fef3c7", "#92400e") # Efektif, tapi Mahal
+                
+                style_2_1 = get_cell_style(c_2_1_active, "#ec4899", "#fce7f3", "#9d174d") # Underperforming
+                style_2_2 = get_cell_style(c_2_2_active, "#06b6d4", "#ecfeff", "#0891b2") # Normal / Baseline
+                style_2_3 = get_cell_style(c_2_3_active, "#22c55e", "#dcfce7", "#166534") # Ideal
+                
+                style_3_1 = get_cell_style(c_3_1_active, "#ea580c", "#ffedd5", "#9a3412") # Underutilized
+                style_3_2 = get_cell_style(c_3_2_active, "#84cc16", "#f0fdf4", "#3f6212") # Efisiensi Tinggi
+                style_3_3 = get_cell_style(c_3_3_active, "#0f766e", "#ccfbf1", "#115e59") # Super Efisien
 
                 matrix_html = f"""<div style="margin: 25px 0; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
-<h5 style="margin-top:0; color: #1e293b; text-align: center; font-weight: 700; font-size: 0.95rem; letter-spacing: 0.05em; text-transform: uppercase;">Posisi Sub-Kegiatan pada Matriks Kinerja</h5>
-<div style="display: grid; grid-template-columns: 140px 1fr 1fr; gap: 12px; align-items: center; max-width: 650px; margin: 20px auto; font-family: sans-serif;">
+<h5 style="margin-top:0; color: #1e293b; text-align: center; font-weight: 700; font-size: 0.95rem; letter-spacing: 0.05em; text-transform: uppercase;">Posisi Sub-Kegiatan pada Matriks Kinerja 3x3</h5>
+<div style="display: grid; grid-template-columns: 140px 1fr 1fr 1fr; gap: 12px; align-items: center; max-width: 800px; margin: 20px auto; font-family: sans-serif;">
 <!-- Header Row -->
 <div></div>
-<div style="text-align: center; font-weight: bold; color: #475569; font-size: 0.8rem; background: #e2e8f0; padding: 8px; border-radius: 4px;">Output Rendah<br><span style="font-weight:normal; font-size:0.7rem;">(Target &lt; 80% Prognosis)</span></div>
-<div style="text-align: center; font-weight: bold; color: #475569; font-size: 0.8rem; background: #e2e8f0; padding: 8px; border-radius: 4px;">Output Tinggi<br><span style="font-weight:normal; font-size:0.7rem;">(Target &ge; 80% Prognosis)</span></div>
+<div style="text-align: center; font-weight: bold; color: #475569; font-size: 0.8rem; background: #e2e8f0; padding: 8px; border-radius: 4px;">Output Rendah<br><span style="font-weight:normal; font-size:0.7rem;">(Target &lt; 0.9 Prognosis)</span></div>
+<div style="text-align: center; font-weight: bold; color: #475569; font-size: 0.8rem; background: #e2e8f0; padding: 8px; border-radius: 4px;">Output Optimal<br><span style="font-weight:normal; font-size:0.7rem;">(0.9 &le; Target &le; 1.1)</span></div>
+<div style="text-align: center; font-weight: bold; color: #475569; font-size: 0.8rem; background: #e2e8f0; padding: 8px; border-radius: 4px;">Output Tinggi<br><span style="font-weight:normal; font-size:0.7rem;">(Target &gt; 1.1)</span></div>
+
 <!-- Row 1: BSK Boros -->
-<div style="font-weight: bold; color: #475569; font-size: 0.8rem; text-align: right; padding-right: 10px; background: #f1f5f9; padding: 8px; border-radius: 4px;">BSK Boros<br><span style="font-weight:normal; font-size:0.7rem;">(BSK &gt; 1.2x Historis)</span></div>
-<div style="{style_cell_1}">
-<div style="font-size:0.85rem;">Tidak Wajar / Boros</div>
-<div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(BSK Boros, Output Rendah)</div>
+<div style="font-weight: bold; color: #475569; font-size: 0.8rem; text-align: right; padding-right: 10px; background: #f1f5f9; padding: 8px; border-radius: 4px;">BSK Boros<br><span style="font-weight:normal; font-size:0.7rem;">(BSK &gt; 1.1x Historis)</span></div>
+<div style="{style_1_1}">
+<div style="font-size:0.85rem;">Tidak Wajar / Warning</div>
+<div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(Boros, Rendah)</div>
 </div>
-<div style="{style_cell_4}">
+<div style="{style_1_2}">
+<div style="font-size:0.85rem;">Kurang Efisien</div>
+<div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(Boros, Optimal)</div>
+</div>
+<div style="{style_1_3}">
+<div style="font-size:0.85rem;">Efektif, tapi Mahal</div>
+<div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(Boros, Tinggi)</div>
+</div>
+
+<!-- Row 2: BSK Wajar -->
+<div style="font-weight: bold; color: #475569; font-size: 0.8rem; text-align: right; padding-right: 10px; background: #f1f5f9; padding: 8px; border-radius: 4px;">BSK Wajar<br><span style="font-weight:normal; font-size:0.7rem;">(0.9 &le; BSK &le; 1.1x)</span></div>
+<div style="{style_2_1}">
+<div style="font-size:0.85rem;">Underperforming</div>
+<div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(Wajar, Rendah)</div>
+</div>
+<div style="{style_2_2}">
+<div style="font-size:0.85rem;">Normal / Baseline</div>
+<div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(Wajar, Optimal)</div>
+</div>
+<div style="{style_2_3}">
 <div style="font-size:0.85rem;">Ideal</div>
-<div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(BSK Naik & Output Tinggi)</div>
+<div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(Wajar, Tinggi)</div>
 </div>
-<!-- Row 2: BSK Hemat -->
-<div style="font-weight: bold; color: #475569; font-size: 0.8rem; text-align: right; padding-right: 10px; background: #f1f5f9; padding: 8px; border-radius: 4px;">BSK Hemat<br><span style="font-weight:normal; font-size:0.7rem;">(BSK &le; 1.2x Historis)</span></div>
-<div style="{style_cell_2}">
-<div style="font-size:0.85rem;">Kurang Dana</div>
-<div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(BSK Hemat, Output Rendah)</div>
+
+<!-- Row 3: BSK Hemat -->
+<div style="font-weight: bold; color: #475569; font-size: 0.8rem; text-align: right; padding-right: 10px; background: #f1f5f9; padding: 8px; border-radius: 4px;">BSK Hemat<br><span style="font-weight:normal; font-size:0.7rem;">(BSK &lt; 0.9x Historis)</span></div>
+<div style="{style_3_1}">
+<div style="font-size:0.85rem;">Underutilized</div>
+<div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(Hemat, Rendah)</div>
 </div>
-<div style="{style_cell_3}">
-<div style="font-size:0.85rem;">Sangat Efisien</div>
-<div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(BSK Hemat & Output Tinggi)</div>
+<div style="{style_3_2}">
+<div style="font-size:0.85rem;">Efisiensi Tinggi</div>
+<div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(Hemat, Optimal)</div>
+</div>
+<div style="{style_3_3}">
+<div style="font-size:0.85rem;">Super Efisien</div>
+<div style="font-size:0.7rem; font-weight:normal; margin-top:2px;">(Hemat, Tinggi)</div>
 </div>
 </div>
 </div>"""
@@ -703,10 +756,11 @@ if selected_sub:
                 </div>
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #f59e0b;'>
-                <b style='color:#92400e;'>Langkah 3 - Penentuan Kuadran Kondisi Kinerja</b><br>
-                <span style='color:#64748b;font-size:0.85em;'>Menggunakan matriks evaluasi 4 kuadran:</span><br>
-                <span style='color:#64748b;font-size:0.85em;'>Efisiensi <b>{efs_label}</b> ({'BSK wajar/hemat' if efs_label == 'Tinggi' else 'BSK tinggi/boros'}) &times; Efektivitas <b>{efk_label}</b> ({'Target memadai/tinggi' if efk_label == 'Tinggi' else 'Target rendah'}) menghasilkan status: <b>{kondisi_kinerja}</b>.</span>
+                <b style='color:#92400e;'>Langkah 3 - Penentuan Skenario Kondisi Kinerja (Matriks 3x3)</b><br>
+                <span style='color:#64748b;font-size:0.85em;'>Menggunakan matriks evaluasi 3x3 (9 Skenario):</span><br>
+                <span style='color:#64748b;font-size:0.85em;'>Efisiensi <b>{efs_label}</b> &times; Efektivitas <b>{efk_label}</b> menghasilkan status: <b>{kondisi_kinerja}</b>.</span>
                 </div>
+
                 
                 <div style='background:white;padding:14px 16px;border-radius:8px;margin-bottom:10px;border-left:4px solid #10b981;'>
                 <b style='color:#065f46;'>Langkah 4 - Perhitungan Skor Akhir (Gaussian Decay pada Kedua Sumbu)</b><br>

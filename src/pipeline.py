@@ -18,7 +18,7 @@ def get_processed_data() -> pd.DataFrame:
     """
     Menjalankan seluruh pipeline data dari raw CSV hingga kalkulasi skor akhir.
     """
-    # Cache invalidation trigger: v28 (Dimensi 3 - 2x2 Matrix BSK-based)
+    # Cache invalidation trigger: v29 (Dimensi 3 - 3x3 Matrix BSK-based)
     df = load_raw()
     
     if df.empty:
