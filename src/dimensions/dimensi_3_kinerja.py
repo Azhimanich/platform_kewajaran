@@ -10,16 +10,16 @@ Mengevaluasi kewajaran kinerja sub-kegiatan menggunakan dua sumbu independen:
 Klasifikasi 3x3 (9 Skenario - Matriks Evaluasi Kondisi Kinerja):
                    Output Rendah        Output Optimal       Output Tinggi
                    (Rasio < 0.9)      (0.9 ≤ Rasio ≤ 1.1)   (Rasio > 1.1)
-  ┌─────────────────────┬─────────────────────┬─────────────────────┐
-  │  Tidak Wajar/Warning│   Kurang Efisien    │ Efektif, tapi Mahal │ BSK Boros
-  │  Input↑ Output↓     │   Input↑ Output=    │ Input↑ Output↑      │ (Rasio > 1.1)
-  ├─────────────────────┼─────────────────────┼─────────────────────┤
-  │  Underperforming    │ Normal / Baseline   │       Ideal         │ BSK Wajar
-  │  Input= Output↓    │   Input= Output=    │ Input= Output↑      │ (0.9 ≤ Rasio ≤ 1.1)
-  ├─────────────────────┼─────────────────────┼─────────────────────┤
-  │   Underutilized     │  Efisiensi Tinggi   │   Super Efisien     │ BSK Hemat
-  │  Input↓ Output↓    │   Input↓ Output=    │ Input↓ Output↑      │ (Rasio < 0.9)
-  └─────────────────────┴─────────────────────┴─────────────────────┘
+  ┌─────────────────────────┬─────────────────────┬─────────────────────────┐
+  │ Tidak Wajar/Sangat Boros│   Kurang Efisien    │ Anggaran Berlebih(Boros)│ BSK Boros
+  │  Input↑ Output↓         │   Input↑ Output=    │ Input↑ Output↑          │ (Rasio > 1.1)
+  ├─────────────────────────┼─────────────────────┼─────────────────────────┤
+  │   Kinerja Kurang        │  Normal / Wajar     │       Ideal             │ BSK Wajar
+  │  Input= Output↓         │   Input= Output=    │ Input= Output↑          │ (0.9 ≤ Rasio ≤ 1.1)
+  ├─────────────────────────┼─────────────────────┼─────────────────────────┤
+  │     Kurang Dana         │      Efisien        │    Sangat Efisien       │ BSK Hemat
+  │  Input↓ Output↓         │   Input↓ Output=    │ Input↓ Output↑          │ (Rasio < 0.9)
+  └─────────────────────────┴─────────────────────┴─────────────────────────┘
 
 Tidak ada hardcode - jika tidak ada data realisasi historis, skor = NaN.
 """
@@ -185,25 +185,25 @@ def calculate(df: pd.DataFrame) -> pd.DataFrame:
 
     # Matriks penuh (kedua sumbu tersedia)
     # Output Tinggi:
-    res.loc[both & efk_t & efs_h, "dimensi_3_kondisi"] = "Super Efisien"
+    res.loc[both & efk_t & efs_h, "dimensi_3_kondisi"] = "Sangat Efisien"
     res.loc[both & efk_t & efs_w, "dimensi_3_kondisi"] = "Ideal"
-    res.loc[both & efk_t & efs_b, "dimensi_3_kondisi"] = "Efektif, tapi Mahal"
+    res.loc[both & efk_t & efs_b, "dimensi_3_kondisi"] = "Anggaran Berlebih (Boros)"
 
     # Output Optimal:
-    res.loc[both & efk_o & efs_h, "dimensi_3_kondisi"] = "Efisiensi Tinggi"
-    res.loc[both & efk_o & efs_w, "dimensi_3_kondisi"] = "Normal / Baseline"
+    res.loc[both & efk_o & efs_h, "dimensi_3_kondisi"] = "Efisien"
+    res.loc[both & efk_o & efs_w, "dimensi_3_kondisi"] = "Normal / Wajar"
     res.loc[both & efk_o & efs_b, "dimensi_3_kondisi"] = "Kurang Efisien"
 
     # Output Rendah:
-    res.loc[both & efk_r & efs_h, "dimensi_3_kondisi"] = "Underutilized"
-    res.loc[both & efk_r & efs_w, "dimensi_3_kondisi"] = "Underperforming"
-    res.loc[both & efk_r & efs_b, "dimensi_3_kondisi"] = "Tidak Wajar / Warning"
+    res.loc[both & efk_r & efs_h, "dimensi_3_kondisi"] = "Kurang Dana"
+    res.loc[both & efk_r & efs_w, "dimensi_3_kondisi"] = "Kinerja Kurang"
+    res.loc[both & efk_r & efs_b, "dimensi_3_kondisi"] = "Tidak Wajar / Sangat Boros"
 
     # Hanya efektivitas tersedia (tanpa data hist_pagu)
     only_efk = ~has_efs & has_efk
     res.loc[only_efk & efk_t, "dimensi_3_kondisi"] = "Ideal"
-    res.loc[only_efk & efk_o, "dimensi_3_kondisi"] = "Normal / Baseline"
-    res.loc[only_efk & efk_r, "dimensi_3_kondisi"] = "Tidak Wajar / Warning"
+    res.loc[only_efk & efk_o, "dimensi_3_kondisi"] = "Normal / Wajar"
+    res.loc[only_efk & efk_r, "dimensi_3_kondisi"] = "Tidak Wajar / Sangat Boros"
 
     # ── Step 8: Skor (Asymmetric Gaussian Decay) ──
     # Efisiensi: hanya penalti jika ratio > 1 (budget lebih tinggi dari historis)
